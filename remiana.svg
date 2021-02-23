@@ -1,0 +1,114 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 192" width="960" height="192" preserveAspectRatio="xMinYMin">
+	<defs>
+		<symbol id="letter-a" viewBox="0 0 2515 1536" preserveAspectRatio="xMinYMin">
+			<path d="M1576,114 l939,1422 h-390 l-176,-284 h-1383 l-176,284 h-390 l924,-1422 q77,-114 324,-114 t330,114 z M746,984 h1019 l-468,-728 q-40,-40 -80,20 z" />
+		</symbol>
+		<symbol id="letter-d" viewBox="0 0 1982 1536" preserveAspectRatio="xMinYMin">
+			<path d="M1704,1536 h-1704 l4,-960 h317 v682 h1305 c16,0 35,-16 35,-35 v-917 c0,-24 -16,-39 -35,-39 h-1622 v-266 h1704 c149,0 274,121 274,270 l-4,995 c0,149 -121,270 -274,270 z" />
+		</symbol>
+		<symbol id="letter-e" viewBox="0 0 1841 1536" preserveAspectRatio="xMinYMin">
+			<path d="M274,1536 c-153,0 -274,-121 -274,-270 v-995 c0,-149 125,-270 274,-270 h1567 v266 h-1481 c-24,0 -39,16 -39,35 v274 h1493 v259 h-1493 v388 c0,20 16,35 35,35 h1485 v278 z" />
+		</symbol>
+		<symbol id="letter-f" viewBox="0 0 1810 1536" preserveAspectRatio="xMinYMin">
+			<path d="M317,835 v701 h-317 v-1266 c0,-74 27,-141 78,-192 s 118,-78 192,-78 h1540 v270 h-1458 c-24,0 -35,12 -35,35 v266 h1473 v263 z" />
+		</symbol>
+		<symbol id="letter-i" viewBox="0 0 340 1536" preserveAspectRatio="xMinYMin">
+			<polygon points="0,1536 0,0 340,0 336,1536" />
+		</symbol>
+		<symbol id="letter-l" viewBox="0 0 1794 1536" preserveAspectRatio="xMinYMin">
+			<path d="M274,1536 c-153,0 -274,-121 -274,-270 l4,-1266 h317 v1223 c0,20 16,35 35,35 h1438 v278 z" />
+		</symbol>
+		<symbol id="letter-m" viewBox="0 0 2572 1536" preserveAspectRatio="xMinYMin">
+			<path d="M2260,1533 v-1097 c0,-19 -19,-34 -34,-34 -11,0 -23,8 -30,15 l-705,1013 c-49,68 -125,106 -205,106 -83,0 -159,-38 -205,-106 l-705,-1013 c-8,-8 -19,-15 -30,-15 -15,0 -34,15 -34,34 v1097 h-307 v-1264 c0,-144 125,-269 273,-269 99,0 186,42 243,121 l770,1107 774,-1107 c57,-80 140,-121 239,-121 148,0 273,125 273,269 v1264 z" />
+		</symbol>
+		<symbol id="letter-n" viewBox="0 0 2060 1536" preserveAspectRatio="xMinYMin">
+			<path d="M2061,1273 c0,74 -24,137 -78,184 -47,55 -114,78 -188,78 -63,0 -121,-24 -172,-67 l-1258,-1117 c-8,-8 -16,-12 -27,-12 -20,0 -31,16 -31,35 v1156 h-306 v-1270 c0,-74 24,-137 78,-184 47,-55 110,-78 184,-78 67,0 121,24 172,67 l1258,1121 c8,8 16,8 27,8 20,0 31,-12 31,-35 v-1156 h310 z" />
+		</symbol>
+		<symbol id="letter-p" viewBox="0 0 1943 1536" preserveAspectRatio="xMinYMin">
+			<path d="M1673,839 h-1360 v697 h-313 v-960 h1595 c20,0 35,-20 35,-35 v-239 c0,-20 -16,-35 -35,-35 h-1595 v-266 h1673 c149,0 270,121 270,270 v290 c0,157 -121,278 -270,278 z" />
+		</symbol>
+		<symbol id="letter-r" viewBox="0 0 2111 1536" preserveAspectRatio="xMinYMin">
+			<path d="M1775,1536 l-133,-647 c-12,-35 -35,-59 -74,-59 h-1250 v705 h-317 v-964 h1622 c20,0 35,-20 35,-35 v-239 c0,-20 -16,-35 -35,-35 h-1622 v-263 h1704 c153,0 274,121 274,270 v208 c0,94 -55,184 -137,235 67,43 110,114 129,196 l141,627 z" />
+		</symbol>
+		<symbol id="letter-t" viewBox="0 0 2069 1536" preserveAspectRatio="xMinYMin">
+			<polygon points="1203,266 1203,1536 862,1536 866,266 0,266 0,0 2069,0 2069,266" />
+		</symbol>
+		<symbol id="letter-y" viewBox="0 0 2284 1536" preserveAspectRatio="xMinYMin">
+			<polygon points="1309,835 1309,1536 972,1536 972,835 0,0 482,0 1144,572 1802,0 2284,0" />
+		</symbol>
+		<symbol id="letter-z" viewBox="0 0 1944 1536" preserveAspectRatio="xMinYMin">
+			<polygon points="1944,1536 0,1536 0,1254 1387,266 27,266 27,0 1916,0 1916,266 525,1254 1940,1254" />
+		</symbol>
+		<symbol id="letter-slash" viewBox="0 0 1456 1536" preserveAspectRatio="xMinYMin">
+			<polygon points="1092,0 0,1536 364,1536 1456,0" />
+		</symbol>
+	</defs>
+	<defs>
+		<symbol id="string-realtime" viewBox="0 0 15339 1536" preserveAspectRatio="xMinYMin">
+			<use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#letter-r" x="0" />
+			<use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#letter-e" x="2223" />
+			<use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#letter-a" x="4144" />
+			<use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#letter-l" x="6659" />
+			<use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#letter-t" x="7941" />
+			<use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#letter-i" x="10202" />
+			<use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#letter-m" x="10734" />
+			<use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#letter-e" x="13498" />
+		</symbol>
+		<symbol id="string-midi" viewBox="0 0 5810 1536" preserveAspectRatio="xMinYMin">
+			<use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#letter-m" x="0" />
+			<use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#letter-i" x="2764" />
+			<use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#letter-d" x="3296" />
+			<use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#letter-i" x="5470" />
+		</symbol>
+		<symbol id="string-file" viewBox="0 0 6297 1536" preserveAspectRatio="xMinYMin">
+			<use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#letter-f" x="0" />
+			<use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#letter-i" x="2002" />
+			<use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#letter-l" x="2534" />
+			<use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#letter-e" x="4456" />
+		</symbol>
+		<symbol id="string-midi-file" viewBox="0 0 12875 1536" preserveAspectRatio="xMinYMin">
+			<use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#string-midi" x="0" />
+			<use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#string-file" x="6578" />
+		</symbol>
+		<symbol id="string-analyzer" viewBox="0 0 16936 1536" preserveAspectRatio="xMinYMin">
+			<use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#letter-a" x="0" />
+			<use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#letter-n" x="2547" />
+			<use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#letter-a" x="4607" />
+			<use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#letter-l" x="7122" />
+			<use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#letter-y" x="8404" />
+			<use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#letter-z" x="10720" />
+			<use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#letter-e" x="12824" />
+			<use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#letter-r" x="14825" />
+		</symbol>
+		<symbol id="string-player" viewBox="0 0 12232 1536" preserveAspectRatio="xMinYMin">
+			<use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#letter-p" x="0" />
+			<use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#letter-l" x="2135" />
+			<use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#letter-a" x="3961" />
+			<use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#letter-y" x="5836" />
+			<use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#letter-e" x="8120" />
+			<use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#letter-r" x="10121" />
+		</symbol>
+		<symbol id="string-analyzer-player" viewBox="0 0 30784 1536" preserveAspectRatio="xMinYMin">
+			<use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#string-analyzer" x="0" />
+			<use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#letter-slash" x="17000" />
+			<use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#string-player" x="18552" />
+		</symbol>
+		<symbol id="string-subtitle" viewBox="0 0 61046 1536" preserveAspectRatio="xMinYMin">
+			<use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#string-realtime" x="0" />
+			<use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#string-midi-file" x="16363" />
+			<use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#string-analyzer-player" x="30262" />
+		</symbol>
+		<symbol id="string-remiana" viewBox="0 0 14514 1536" preserveAspectRatio="xMinYMin">
+			<use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#letter-r" x="0" />
+			<use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#letter-e" x="2223" />
+			<use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#letter-m" x="4256" />
+			<use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#letter-i" x="7020" />
+			<use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#letter-a" x="7392" />
+			<use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#letter-n" x="9939" />
+			<use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#letter-a" x="11999" />
+		</symbol>
+	</defs>
+
+	<use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#string-subtitle" x="16" y="24" width="768" />
+	<use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#string-remiana" x="16" y="68" width="928" />
+</svg>
