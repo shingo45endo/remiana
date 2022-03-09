@@ -9,7 +9,11 @@
 		"ecmaVersion": 2020,
 		"sourceType": "module"
 	},
+	"plugins": [
+		"html"
+	],
 	"rules": {
+		"brace-style": ["error", "1tbs", {"allowSingleLine": true}],
 		"indent": ["error", "tab", {"ignoreComments": true}],
 		"linebreak-style": ["error", "unix"],
 		"quotes": ["error", "single", {"avoidEscape": true, "allowTemplateLiterals": true}],
@@ -85,6 +89,7 @@
 		"no-extra-parens": "off",
 		"no-inline-comments": "off",
 		"no-labels": "off",
+		"no-lonely-if": "off",
 		"no-magic-numbers": "off",
 		"no-multi-spaces": "off",
 		"no-negated-condition": "off",
@@ -99,6 +104,7 @@
 		"object-curly-newline": "off",
 		"object-property-newline": "off",
 		"one-var": "off",
+		"operator-linebreak": "off",
 		"padded-blocks": "off",
 		"prefer-destructuring": "off",
 		"prefer-named-capture-group": "off",
