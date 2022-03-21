@@ -1,0 +1,3 @@
+[submodule "web/midi-file-player/sound-canvas-lcd"]
+	path = web/midi-file-player/sound-canvas-lcd
+	url = https://github.com/shingo45endo/sound-canvas-lcd.git

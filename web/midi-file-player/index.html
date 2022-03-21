@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0"> 
+<title>Simple MIDI File Player</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p" crossorigin="anonymous"></script>
+<script type="module">
+import {parseMidiFile} from '../../lib/file-parser/midi_file_parser.js';
+import {MidiPlayer} from './player.js';
+import {decodeLegacyText} from './legacy_textdecoder.js';
+import './sound-canvas-lcd/sound_canvas_lcd_ex.js';
+
+window.addEventListener('DOMContentLoaded', () => {
+	const elemLcd      = document.getElementById('my-lcd');
+	const elemProgress = document.getElementById('my-progress');
+	const elemTime     = document.getElementById('my-time');
+	const elemPosition = document.getElementById('my-position');
+	const elemTempo    = document.getElementById('my-tempo');
+	const elemTimeSig  = document.getElementById('my-timesig');
+	const elemMidiOuts = [...document.querySelectorAll('[id^=my-midiout-]')];
+
+	// Sets up Web MIDI API.
+	const currentMidiOuts = elemMidiOuts.map(() => null);
+	(async () => {
+		// Sets up MIDI devices.
+		const midiAccess = await navigator.requestMIDIAccess({sysex: true});
+		midiAccess.addEventListener('statechange', updateMidiDevices);
+		updateMidiDevices();
+
+		// Switches current MIDI devices.
+		elemMidiOuts.forEach((elem, i) => {
+			elem.addEventListener('change', (event) => {
+				currentMidiOuts[i] = null;
+
+				const id = event.target.options[event.target.selectedIndex].dataset.device;
+				for (const output of [...midiAccess.outputs.values()]) {
+					if (output.id === id) {
+						currentMidiOuts[i] = output;
+						break;
+					}
+				}
+			});
+		});
+
+		function updateMidiDevices() {
+			for (let i = 0; i < currentMidiOuts.length; i++) {
+				// Updates the current MIDI devices.
+				if (currentMidiOuts[i]?.connection !== 'open') {
+					currentMidiOuts[i] = null;
+				}
+
+				// Updates the list.
+				const elemMidiOut = elemMidiOuts[i];
+				elemMidiOut.innerHTML = '<option>Disconnected</option>';
+				for (const output of [...midiAccess.outputs.values()]) {
+					const isSelected = (currentMidiOuts[i]?.id === output.id);
+					elemMidiOut.insertAdjacentHTML('beforeend', `<option id="${elemMidiOut.id}-${output.id}" ${(isSelected) ? 'selected' : ''} data-device="${output.id}">${output.name}</option>`);
+				}
+			}
+		}
+	})().catch((error) => {
+		console.error(error);
+
+		// Disables the list.
+		[...document.querySelectorAll('[id^=my-midiout-]')].forEach((elem) => {elem.disabled = true;});
+
+		// Displays the alert box.
+		const id = (navigator.requestMIDIAccess) ? 'my-alert-midi-not-granted' : 'my-alert-midi-not-supported';
+		document.querySelector('main').prepend(document.getElementById(id).content.cloneNode(true));
+	});
+
+	const queueEvents = [];
+	const player = new MidiPlayer(handleMidiEvents, handleNotifyEvent);
+	let currentSong;
+
+	function handleMidiEvents(events) {
+		// Queues the received events to the event queue.
+		queueEvents.push(...events);
+
+		// Sends MIDI events to the MIDI devices.
+		const now = performance.now();
+		let delayMsec = 0;
+		for (const event of events) {
+			// Skips meta events.
+			const {bytes} = event;
+			if (bytes[0] === 0xff || bytes[0] === 0xf7) {	// TODO: Treats F7 events.
+				continue;
+			}
+
+			// Chooses a MIDI device by port No.
+			const portNo = event.portNo ?? 0;
+			const midiOut = currentMidiOuts[portNo];
+			if (!midiOut) {
+				continue;
+			}
+
+			// Sends a MIDI event to the MIDI device corresponding to the port No.
+			try {
+				midiOut.send(bytes, event.timestamp);
+
+				if (delayMsec === 0 && event.timestamp < now) {
+					delayMsec = now - event.timestamp;
+				}
+			} catch (e) {
+				console.error(e);	// TODO: Treats wrong MIDI events.
+			}
+		}
+
+		if (delayMsec > 0) {
+			console.warn(`Delayed: ${delayMsec} [msec]`);
+		}
+	}
+
+	function handleNotifyEvent(state) {
+		const tables = {
+			play:  {play: false, pause: true,  stop: true},
+			pause: {play: true,  pause: false, stop: true},
+			stop:  {play: true,  pause: false, stop: false},
+		}[state];
+		console.assert(tables);
+
+		// Updates the states of UI buttons.
+		for (const key of ['play', 'pause', 'stop']) {
+			document.getElementById(`my-${key}`).disabled = !tables[key];
+		}
+
+		// Stops sound if necessary.
+		if (state === 'pause' || state === 'stop') {
+			stopSound();
+		}
+	}
+
+	function handleUpdateFrame(timestamp) {
+		// Determines which events to be handled in this frame.
+		let targetNum = queueEvents.findIndex((e) => e.timestamp > timestamp);
+		if (targetNum < 0 && queueEvents.length > 0) {
+			targetNum = queueEvents.length;
+		}
+
+		// Processes MIDI events.
+		if (targetNum > 0) {
+			const targetEvents = queueEvents.splice(0, targetNum);
+			const lastEvent = targetEvents[targetNum - 1];
+
+			// Sends MIDI events to the LCD to update it.
+			for (const event of targetEvents) {
+				elemLcd.inputBytes(event.bytes, event.portNo ?? 0);
+			}
+
+			// Updates the current position.
+			const {mbt} = currentSong.tempoMap.get(lastEvent.tick);
+			if (mbt) {
+				elemPosition.textContent = `${String(mbt.meas).padStart(3, '0')}:${String(mbt.beat).padStart(2, '0')}:${String(mbt.tick).padStart(4, '0')}`;
+			} else {
+				const {smpte} = currentSong.tempoMap.get(lastEvent.tick);
+				if (smpte) {
+					elemPosition.textContent = `${smpte.hours}:${String(smpte.minutes).padStart(2, '0')}:${String(smpte.seconds).padStart(2, '0')}:${String(smpte.frames).padStart(2, '0')}:${String(smpte.fractionalFrames).padStart(3, '0')}`;
+				}
+			}
+
+			// Updates tempo and time signature if necessary.
+			const ticks = new Set(targetEvents.map((e) => e.tick));
+			for (const tick of ticks) {
+				const {usecPerBeat, timeSignature} = currentSong.tempoMap.get(tick);
+				if (usecPerBeat) {
+					elemTempo.textContent = `${(60 * 1000 * 1000 / usecPerBeat).toFixed(2)}`;
+				}
+				if (timeSignature) {
+					elemTimeSig.textContent = `${timeSignature.numerator}/${timeSignature.denominator}`;
+				}
+			}
+		}
+
+		// Updates the current progress and time.
+		const currentUsec = player.getCurrentUsec(timestamp);
+		const totalUsec   = player.getTotalUsec();
+		elemProgress.style.width = `${currentUsec * 100 / totalUsec}%`;
+		elemTime.textContent = (currentUsec > 0) ? formatUsec(currentUsec) : '-';
+
+		requestAnimationFrame(handleUpdateFrame);
+	}
+
+	// Kicks frame update handler periodically to update the internal state of the LCD.
+	setInterval(() => {
+		handleUpdateFrame(performance.now());
+	}, 2000);
+
+	async function waitForQueueEmpty(timeout = 1000) {
+		return await new Promise((resolve) => {
+			const baseTimestamp = performance.now();	// For timeout
+			const timerId = setInterval(() => {
+				if (queueEvents.length === 0 || performance.now() > baseTimestamp + timeout) {
+					clearInterval(timerId);
+					resolve();
+				}
+			}, 10);
+		});
+	}
+
+	function stopSound() {
+		// Sends All Sound Off (CC#: 120) events to all the channels of each port.
+		const timestamp = queueEvents[queueEvents.length - 1]?.timestamp;
+		currentMidiOuts.forEach((midiOut) => {
+			if (!midiOut) {
+				return;
+			}
+			for (let channelNo = 0; channelNo < 16; channelNo++) {
+				if (midiOut) {
+					midiOut.send([0xb0 | channelNo, 120, 0], (timestamp) ? timestamp + 0.005 : undefined);
+				}
+			}
+		});
+
+		// Sends All Sound Off (CC#: 120) events to the LCD.
+		(async () => {
+			await waitForQueueEmpty();
+			for (let partNo = 0; partNo < 64; partNo++) {
+				elemLcd.inputBytes([0xb0 | partNo % 16, 120, 0], Math.trunc(partNo / 16));
+			}
+		})();
+	}
+
+	function formatUsec(usec) {
+		console.assert(usec >= 0);
+		const dt = new Date(usec / 1000);
+		return `${dt.getMinutes()}:${String(dt.getSeconds()).padStart(2, '0')}:${String(dt.getMilliseconds()).padStart(3, '0')}`;
+	}
+
+	// Handles D&D related events.
+	['dragstart', 'drag', 'dragenter', 'dragleave', 'dragover', 'drop', 'dragend'].forEach((eventName) => {
+		document.addEventListener(eventName, (e) => {
+			e.stopPropagation();
+			e.preventDefault();
+		});
+	});
+	document.addEventListener('drop', async (e) => {
+		e.stopPropagation();
+		e.preventDefault();
+
+		if ((e?.dataTransfer?.files?.length ?? 0) === 0) {
+			return;
+		}
+
+		player.stop();
+		document.getElementById('my-title').textContent = e.dataTransfer.files[0].name;
+
+		try {
+			// Loads the MIDI file.
+			const content = await (async (file) => {
+				const smf = await new Promise((resolve, reject) => {
+					const reader = new FileReader();
+					reader.onload = () => resolve(reader.result);
+					reader.onerror = (e) => reject(e);
+					reader.readAsArrayBuffer(file);
+				});
+				const logs = [];
+				const content = parseMidiFile(new Uint8Array(smf), logs);
+				if (logs.length > 0) {
+					console.warn(...logs);
+				}
+				return content;
+			})(e.dataTransfer.files[0]);
+
+			// Waits until the MIDI event queue is empty.
+			await waitForQueueEmpty();
+
+			// Sets and plays the song.
+			currentSong = content.song;
+			player.setSong(currentSong);
+			player.play();
+
+			// Sets the title of the song.
+			const events = currentSong?.MTrks?.[0]?.events.filter((event) => event.tick === 0) ?? [];
+			const event = events.find((event) => event.bytes[0] === 0xff && event.bytes[1] === 0x03) ?? events.find((event) => event.bytes[0] === 0xff && event.bytes[1] === 0x01);
+			if (event) {
+				const index = event.bytes.findIndex((e, i) => (i >= 2 && (e & 0x80) === 0)) + 1;
+				console.assert(index >= 3);
+				document.getElementById('my-title').textContent = decodeLegacyText(event.bytes.slice(index));
+			}
+
+			// Sets the total time of the song.
+			document.getElementById('my-total-time').textContent = formatUsec(player.getTotalUsec());
+
+		} catch (e) {
+			console.error(e);
+		}
+	});
+
+	document.getElementById('my-play').addEventListener('click', () => {
+		player.play();
+	});
+	document.getElementById('my-pause').addEventListener('click', () => {
+		player.pause();
+	});
+	document.getElementById('my-stop').addEventListener('click', () => {
+		player.stop();
+	});
+
+	['input', 'change'].forEach((eventName) => {
+		document.getElementById('my-playspeed').addEventListener(eventName, (e) => {
+			player.setSpeed(Number(e.target.value));
+			document.getElementById('my-current-playspeed').textContent = `x ${e.target.value}`;
+		});
+	});
+
+	elemLcd.addEventListener('dblclick', () => {
+		elemLcd.rows = {1: 2, 2: 4, 4: 1}[elemLcd.rows];
+	});
+
+	document.addEventListener('visibilitychange', () => {
+		const [intervalMsec, preprocessMsec] = (document.visibilityState === 'visible') ? [100, 500] : [1000, 2000];
+		player.setInterval(intervalMsec, preprocessMsec);
+	});
+
+	window.addEventListener('beforeunload', () => {
+		stopSound();
+	});
+});
+</script>
+<style>
+</style>
+</head>
+
+<body>
+	<!-- Navbar -->
+	<nav class="navbar navbar-light bg-light">
+		<div class="container align-items-start">
+			<h1 class="h6 mt-1"><span class="navbar-brand">Simple MIDI File Player</span></h1>
+			<div class="position-relative">
+				<div class="input-group">
+					<label for="my-midiout-0" class="input-group-text" style="width: 8rem;">MIDI Out A</label>
+					<select id="my-midiout-0" class="form-select form-select-sm" style="width: 12rem;"></select>
+				</div>
+				<div id="my-collapse-midiout" class="collapse">
+					<div class="input-group">
+						<label for="my-midiout-1" class="input-group-text" style="width: 8rem;">MIDI Out B</label>
+						<select id="my-midiout-1" class="form-select form-select-sm" style="width: 12rem;"></select>
+					</div>
+					<div class="input-group">
+						<label for="my-midiout-2" class="input-group-text" style="width: 8rem;">MIDI Out C</label>
+						<select id="my-midiout-2" class="form-select form-select-sm" style="width: 12rem;"></select>
+					</div>
+					<div class="input-group">
+						<label for="my-midiout-3" class="input-group-text" style="width: 8rem;">MIDI Out D</label>
+						<select id="my-midiout-3" class="form-select form-select-sm" style="width: 12rem;"></select>	
+					</div>
+				</div>
+				<button type="button" class="btn btn-outline-secondary dropdown-toggle ms-1 position-absolute start-100 top-0" data-bs-toggle="collapse" data-bs-target="#my-collapse-midiout"></button>
+			</div>
+		</div>
+	</nav>
+
+	<!-- Main screen -->
+	<main class="container mt-2">
+		<div class="row">
+			<div class="col">
+				<sound-canvas-lcd-ex id="my-lcd"></sound-canvas-lcd-ex>
+				<div class="progress mt-2">
+					<div id="my-progress" class="progress-bar bg-secondary" role="progressbar" style="transition: none;"></div>
+				</div>
+				<div class="card mt-2">
+					<div class="card-body">
+						<table class="table table-sm">
+							<thead>
+								<tr>
+									<th class="text-center" style="width: 25%;">Time</th>
+									<th class="text-center" style="width: 25%;">Position</th>
+									<th class="text-center" style="width: 25%;">Tempo</th>
+									<th class="text-center" style="width: 25%;">Time Sig.</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr>
+									<td class="text-center"><span id="my-time">-</span>/<span id="my-total-time">-</span></td>
+									<td id="my-position" class="text-center">-</td>
+									<td id="my-tempo" class="text-center">-</td>
+									<td id="my-timesig" class="text-center">-</td>
+								</tr>
+							</tbody>
+						</table>
+						<div class="d-flex">
+							<span>Title:</span>
+							<span id="my-title" class="ms-2" style="font-family: serif;"></span>
+						</div>
+					</div>
+				</div>
+				<div class="row mt-2">
+					<div class="col d-flex justify-content-between">
+						<div class="btn-group">
+							<button id="my-play" type="button" class="btn btn-outline-secondary">
+								<svg width="1em" height="1em" viewBox="0 0 16 16" class="bi bi-play-fill" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+									<path d="M11.596 8.697l-6.363 3.692c-.54.313-1.233-.066-1.233-.697V4.308c0-.63.692-1.01 1.233-.696l6.363 3.692a.802.802 0 0 1 0 1.393z"/>
+								</svg>
+							</button>
+							<button id="my-pause" type="button" class="btn btn-outline-secondary">
+								<svg width="1em" height="1em" viewBox="0 0 16 16" class="bi bi-pause-fill" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+									<path d="M5.5 3.5A1.5 1.5 0 0 1 7 5v6a1.5 1.5 0 0 1-3 0V5a1.5 1.5 0 0 1 1.5-1.5zm5 0A1.5 1.5 0 0 1 12 5v6a1.5 1.5 0 0 1-3 0V5a1.5 1.5 0 0 1 1.5-1.5z"/>
+								</svg>
+							</button>
+							<button id="my-stop" type="button" class="btn btn-outline-secondary">
+								<svg width="1em" height="1em" viewBox="0 0 16 16" class="bi bi-stop-fill" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+									<path d="M5 3.5h6A1.5 1.5 0 0 1 12.5 5v6a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 11V5A1.5 1.5 0 0 1 5 3.5z"/>
+								</svg>
+							</button>
+						</div>
+						<div class="row mt-1">
+							<div class="col-auto pe-0">
+								<span id="my-current-playspeed" class="form-text">x 1</span>
+							</div>
+							<div class="col-auto">
+								<input type="range" id="my-playspeed" class="form-range" min="0.25" max="2.5" value="1" step="0.25" style="width: 16rem;">
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</main>
+
+	<!-- Alert templates -->
+	<template id="my-alert-midi-not-granted">
+		<div class="alert alert-warning" role="alert">
+			<p>This application needs the permission to connect to MIDI devices (with SysEx). To connect MIDI devices, you have to:</p>
+			<ul>
+				<li>Chrome / Edge: 
+					<ul>
+						<li>Reload this page and give permission to connect MIDI devices on the popup.</li>
+					</ul>
+				</li>
+				<li>Firefox:
+					<ul>
+						<li>Install <a href="https://shingo45endo.github.io/site-permission-add-ons/site_permissions_for_shingo45endogithubio-1.0-an+fx.xpi">Site Permission Add-on</a> to allow our site to request MIDI permissions.</li>
+						<li>Reload this page.</li>
+					</ul>
+				</li>
+			</ul>
+		</div>
+	</template>
+	<template id="my-alert-midi-not-supported">
+		<div class="alert alert-danger" role="alert">
+			<p>This application doesn't work on your browser.</p>
+		</div>
+	</template>
+</body>
+</html>
