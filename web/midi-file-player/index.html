@@ -8,6 +8,7 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p" crossorigin="anonymous"></script>
 <script type="module">
 import {parseMidiFile} from '../../lib/file-parser/midi_file_parser.js';
+import {MidiPort} from '../../lib/module-simulator/midi_port.js';
 import {MidiPlayer} from './player.js';
 import {decodeLegacyText} from './legacy_textdecoder.js';
 import './sound-canvas-lcd/sound_canvas_lcd_ex.js';
@@ -72,6 +73,7 @@ window.addEventListener('DOMContentLoaded', () => {
 	});
 
 	const queueEvents = [];
+	const midiPorts = [...new Array(currentMidiOuts.length).fill()].map(() => new MidiPort());
 	const player = new MidiPlayer(handleMidiEvents, handleNotifyEvent);
 	let currentSong;
 
@@ -85,7 +87,7 @@ window.addEventListener('DOMContentLoaded', () => {
 		for (const event of events) {
 			// Skips meta events.
 			const {bytes} = event;
-			if (bytes[0] === 0xff || bytes[0] === 0xf7) {	// TODO: Treats F7 events.
+			if (bytes[0] === 0xff) {
 				continue;
 			}
 
@@ -98,13 +100,20 @@ window.addEventListener('DOMContentLoaded', () => {
 
 			// Sends a MIDI event to the MIDI device corresponding to the port No.
 			try {
-				midiOut.send(bytes, event.timestamp);
+				// Pushes the event to MidiPort and pops it to handle divided F7 SysEx and recover wrong MIDI messages.
+				midiPorts[portNo].pushBytes(bytes);
+				const sendEvents = midiPorts[portNo].popEvents();
+
+				// Sends MIDI event(s).
+				if (sendEvents.length > 0) {
+					midiOut.send(sendEvents.flat(), event.timestamp);
+				}
 
 				if (delayMsec === 0 && event.timestamp < now) {
 					delayMsec = now - event.timestamp;
 				}
 			} catch (e) {
-				console.error(e);	// TODO: Treats wrong MIDI events.
+				console.error(e);
 			}
 		}
 
@@ -276,6 +285,7 @@ window.addEventListener('DOMContentLoaded', () => {
 			await waitForQueueEmpty();
 
 			// Sets and plays the song.
+			midiPorts.forEach((port) => {port.reset();});
 			currentSong = content.song;
 			player.setSong(currentSong);
 			player.play();
