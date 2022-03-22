@@ -81,39 +81,42 @@ window.addEventListener('DOMContentLoaded', () => {
 		// Queues the received events to the event queue.
 		queueEvents.push(...events);
 
+		// Combines the events with the same timestamp in an array.
+		const eventClusters = events.reduce((p, c, i, a) => {
+			if (i === 0 || c.timestamp !== a[i - 1].timestamp) {
+				p.push([]);
+			}
+			p[p.length - 1].push(c);
+			return p;
+		}, []);
+
 		// Sends MIDI events to the MIDI devices.
 		const now = performance.now();
 		let delayMsec = 0;
-		for (const event of events) {
-			// Skips meta events.
-			const {bytes} = event;
-			if (bytes[0] === 0xff) {
-				continue;
-			}
-
-			// Chooses a MIDI device by port No.
-			const portNo = event.portNo ?? 0;
-			const midiOut = currentMidiOuts[portNo];
-			if (!midiOut) {
-				continue;
+		for (const events of eventClusters) {
+			// Pushes all the events at the same time to MidiPort.
+			for (const event of events) {
+				const {bytes, portNo} = event;
+				if (currentMidiOuts[portNo] && bytes[0] !== 0xff) {
+					midiPorts[portNo].pushBytes(bytes);
+				}
 			}
 
 			// Sends a MIDI event to the MIDI device corresponding to the port No.
-			try {
-				// Pushes the event to MidiPort and pops it to handle divided F7 SysEx and recover wrong MIDI messages.
-				midiPorts[portNo].pushBytes(bytes);
-				const sendEvents = midiPorts[portNo].popEvents();
-
-				// Sends MIDI event(s).
-				if (sendEvents.length > 0) {
-					midiOut.send(sendEvents.flat(), event.timestamp);
+			const timestamp = events[0].timestamp;
+			for (let portNo = 0; portNo < currentMidiOuts.length; portNo++) {
+				try {
+					const sendEvents = midiPorts[portNo].popEvents();
+					if (sendEvents.length > 0) {
+						currentMidiOuts[portNo].send(sendEvents.flat(), timestamp);
+					}
+				} catch (e) {
+					console.error(e);
 				}
+			}
 
-				if (delayMsec === 0 && event.timestamp < now) {
-					delayMsec = now - event.timestamp;
-				}
-			} catch (e) {
-				console.error(e);
+			if (delayMsec === 0 && timestamp < now) {
+				delayMsec = now - timestamp;
 			}
 		}
 

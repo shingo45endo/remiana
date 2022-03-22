@@ -151,8 +151,7 @@ export class MidiPlayer {
 				break;
 			}
 
-			// Note: "+0.005" for timestamp is to ensure that MIDI events which are in the same timestamp are sent in-order.
-			const timestamp = Math.max(baseTimestamp + ((event.usec - baseEvent.usec) / 1000 / this._playSpeed), this._sentTimeStamp + 0.005);
+			const timestamp = Math.max(baseTimestamp + ((event.usec - baseEvent.usec) / 1000 / this._playSpeed), this._sentTimeStamp);
 			sendEvents.push({...event, timestamp});
 
 			this._sentIndex = i;
