@@ -132,60 +132,69 @@ window.addEventListener('DOMContentLoaded', () => {
 		}
 	}
 
-	function handleUpdateFrame(timestamp) {
-		// Determines which events to be handled in this frame.
-		let targetNum = queueEvents.findIndex((e) => e.timestamp > timestamp);
-		if (targetNum < 0 && queueEvents.length > 0) {
-			targetNum = queueEvents.length;
-		}
+	const handleUpdateFrame = (() => {
+		let requestId = 0;
 
-		// Processes MIDI events.
-		if (targetNum > 0) {
-			const targetEvents = queueEvents.splice(0, targetNum);
-			const lastEvent = targetEvents[targetNum - 1];
+		// Kicks frame update handler periodically to update the internal state of the LCD.
+		setInterval(() => {
+			if (requestId) {
+				cancelAnimationFrame(requestId);
+				requestId = 0;
+			}
+			handleUpdateFrame(performance.now());
+		}, 2000);
 
-			// Sends MIDI events to the LCD to update it.
-			for (const event of targetEvents) {
-				elemLcd.inputBytes(event.bytes, event.portNo ?? 0);
+		return (timestamp) => {
+			// Determines which events to be handled in this frame.
+			let targetNum = queueEvents.findIndex((e) => e.timestamp > timestamp);
+			if (targetNum < 0 && queueEvents.length > 0) {
+				targetNum = queueEvents.length;
 			}
 
-			// Updates the current position.
-			const {mbt} = currentSong.tempoMap.get(lastEvent.tick);
-			if (mbt) {
-				elemPosition.textContent = `${String(mbt.meas).padStart(3, '0')}:${String(mbt.beat).padStart(2, '0')}:${String(mbt.tick).padStart(4, '0')}`;
-			} else {
-				const {smpte} = currentSong.tempoMap.get(lastEvent.tick);
-				if (smpte) {
-					elemPosition.textContent = `${smpte.hours}:${String(smpte.minutes).padStart(2, '0')}:${String(smpte.seconds).padStart(2, '0')}:${String(smpte.frames).padStart(2, '0')}:${String(smpte.fractionalFrames).padStart(3, '0')}`;
+			// Processes MIDI events.
+			if (targetNum > 0) {
+				const targetEvents = queueEvents.splice(0, targetNum);
+				const lastEvent = targetEvents[targetNum - 1];
+
+				// Sends MIDI events to the LCD to update it.
+				for (const event of targetEvents) {
+					elemLcd.inputBytes(event.bytes, event.portNo ?? 0);
+				}
+
+				// Updates the current position.
+				const {mbt} = currentSong.tempoMap.get(lastEvent.tick);
+				if (mbt) {
+					elemPosition.textContent = `${String(mbt.meas).padStart(3, '0')}:${String(mbt.beat).padStart(2, '0')}:${String(mbt.tick).padStart(4, '0')}`;
+				} else {
+					const {smpte} = currentSong.tempoMap.get(lastEvent.tick);
+					if (smpte) {
+						elemPosition.textContent = `${smpte.hours}:${String(smpte.minutes).padStart(2, '0')}:${String(smpte.seconds).padStart(2, '0')}:${String(smpte.frames).padStart(2, '0')}:${String(smpte.fractionalFrames).padStart(3, '0')}`;
+					}
+				}
+
+				// Updates tempo and time signature if necessary.
+				const ticks = new Set(targetEvents.map((e) => e.tick));
+				for (const tick of ticks) {
+					const {usecPerBeat, timeSignature} = currentSong.tempoMap.get(tick);
+					if (usecPerBeat) {
+						elemTempo.textContent = `${(60 * 1000 * 1000 / usecPerBeat).toFixed(2)}`;
+					}
+					if (timeSignature) {
+						elemTimeSig.textContent = `${timeSignature.numerator}/${timeSignature.denominator}`;
+					}
 				}
 			}
 
-			// Updates tempo and time signature if necessary.
-			const ticks = new Set(targetEvents.map((e) => e.tick));
-			for (const tick of ticks) {
-				const {usecPerBeat, timeSignature} = currentSong.tempoMap.get(tick);
-				if (usecPerBeat) {
-					elemTempo.textContent = `${(60 * 1000 * 1000 / usecPerBeat).toFixed(2)}`;
-				}
-				if (timeSignature) {
-					elemTimeSig.textContent = `${timeSignature.numerator}/${timeSignature.denominator}`;
-				}
-			}
-		}
+			// Updates the current progress and time.
+			const currentUsec = player.getCurrentUsec(timestamp);
+			const totalUsec   = player.getTotalUsec();
+			elemProgress.style.width = `${currentUsec * 100 / totalUsec}%`;
+			elemTime.textContent = (currentUsec > 0) ? formatUsec(currentUsec) : '-';
 
-		// Updates the current progress and time.
-		const currentUsec = player.getCurrentUsec(timestamp);
-		const totalUsec   = player.getTotalUsec();
-		elemProgress.style.width = `${currentUsec * 100 / totalUsec}%`;
-		elemTime.textContent = (currentUsec > 0) ? formatUsec(currentUsec) : '-';
-
-		requestAnimationFrame(handleUpdateFrame);
-	}
-
-	// Kicks frame update handler periodically to update the internal state of the LCD.
-	setInterval(() => {
-		handleUpdateFrame(performance.now());
-	}, 2000);
+			// Requests callback for next frame.
+			requestId = requestAnimationFrame(handleUpdateFrame);
+		};
+	})();
 
 	async function waitForQueueEmpty(timeout = 1000) {
 		return await new Promise((resolve) => {
