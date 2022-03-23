@@ -237,9 +237,7 @@ window.addEventListener('DOMContentLoaded', () => {
 				return;
 			}
 			for (let channelNo = 0; channelNo < 16; channelNo++) {
-				if (midiOut) {
-					midiOut.send([0xb0 | channelNo, 120, 0], (timestamp) ? timestamp + 0.005 : undefined);
-				}
+				midiOut.send([0xb0 | channelNo, 120, 0], (timestamp) ? timestamp + 0.005 : undefined);
 			}
 		});
 
