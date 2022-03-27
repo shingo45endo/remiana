@@ -12,6 +12,7 @@ import {MidiPort} from '../../lib/module-simulator/midi_port.js';
 import {MidiPlayer} from './player.js';
 import {decodeLegacyText} from './legacy_textdecoder.js';
 import './sound-canvas-lcd/sound_canvas_lcd_ex.js';
+import './keyboard_indicator.js';
 
 window.addEventListener('DOMContentLoaded', () => {
 	const elemLcd      = document.getElementById('my-lcd');
@@ -22,6 +23,16 @@ window.addEventListener('DOMContentLoaded', () => {
 	const elemTimeSig  = document.getElementById('my-timesig');
 	const elemMidiOuts = [...document.querySelectorAll('[id^=my-midiout-]')];
 	const elemMidiLeds = [...document.querySelectorAll('[id^=my-midiled-]')];
+
+	// Adds keyboard elements.
+	for (let i = 0; i < elemMidiOuts.length; i++) {
+		const tabId = `my-keyboard-panes-${i}`;
+		const tabHtml = `<li class="nav-item" role="presentation"><button type="button" class="nav-link ${(i === 0) ? 'active' : ''}" role="tab" data-bs-toggle="tab" data-bs-target="#${tabId}">Port ${(0xa + i).toString(36).toUpperCase()}</button></li>`;
+		document.getElementById('my-keyboard-tabs').insertAdjacentHTML('beforeend', tabHtml);
+		const tableHtml = '<table class="table table-sm"><tbody>' + [...new Array(16).fill()].map((_, j) => `<tr class="align-middle"><td style="width: 4rem;">Ch. ${String(j + 1).padStart(2, '0')}</td><td><keyboard-indicator id="my-keyboard-${i}-${j}"></keyboard-indicator></td></tr>`).join('') + '</tbody></table>';
+		document.getElementById('my-keyboard-panes').insertAdjacentHTML('beforeend', `<div id="${tabId}" class="tab-pane fade ${(i === 0) ? 'show active' : ''}" role="tabpanel">${tableHtml}</div>`);
+	}
+	const elemKeyboards = [...document.querySelectorAll('keyboard-indicator[id^=my-keyboard-]')];
 
 	// Sets up Web MIDI API.
 	const currentMidiOuts = elemMidiOuts.map(() => null);
@@ -169,9 +180,22 @@ window.addEventListener('DOMContentLoaded', () => {
 				const targetEvents = queueEvents.splice(0, targetNum);
 				const lastEvent = targetEvents[targetNum - 1];
 
-				// Sends MIDI events to the LCD to update it.
+				// Sends MIDI events to the LCD and the keyboards to update them.
 				for (const event of targetEvents) {
-					elemLcd.inputBytes(event.bytes, event.portNo ?? 0);
+					const {bytes, portNo = 0} = event;
+					elemLcd.inputBytes(bytes, portNo);
+
+					// Note: Handles only Note On/Off events. (All Note Off and "Reset" SysExs are not supported.)
+					if (bytes[0] < 0xa0) {
+						const [statusByte, noteNo, velocity] = bytes;
+						const channelNo  = bytes[0] & 0x0f;
+						const elemKeyboard = elemKeyboards[16 * portNo + channelNo];
+						if ((statusByte & 0xf0) === 0x90 && velocity > 0) {
+							elemKeyboard.noteOn(noteNo);
+						} else {
+							elemKeyboard.noteOff(noteNo);
+						}
+					}
 				}
 
 				// Flashes the LEDs.
@@ -246,6 +270,7 @@ window.addEventListener('DOMContentLoaded', () => {
 			await waitForQueueEmpty();
 			for (let partNo = 0; partNo < 64; partNo++) {
 				elemLcd.inputBytes([0xb0 | partNo % 16, 120, 0], Math.trunc(partNo / 16));
+				elemKeyboards[partNo].reset();
 			}
 		})();
 	}
@@ -349,6 +374,10 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 <style>
+.fade {
+	transition-duration: 0.05s;
+}
+
 @keyframes midi-in-led {
 	0% {opacity: 1;}
 	100% {opacity: 0;}
@@ -396,7 +425,7 @@ window.addEventListener('DOMContentLoaded', () => {
 	<!-- Main screen -->
 	<main class="container mt-2">
 		<div class="row">
-			<div class="col">
+			<div class="col-lg-12 col-xl-6 mt-xl-5">
 				<sound-canvas-lcd-ex id="my-lcd"></sound-canvas-lcd-ex>
 				<div class="progress mt-2">
 					<div id="my-progress" class="progress-bar bg-secondary" role="progressbar" style="transition: none;"></div>
@@ -457,12 +486,18 @@ window.addEventListener('DOMContentLoaded', () => {
 					</div>
 				</div>
 			</div>
+			<div class="col-lg-12 col-xl-6 mt-lg-2 mt-2 mt-xl-0">
+				<ul id="my-keyboard-tabs" class="nav nav-tabs" role="tablist">
+				</ul>
+				<div id="my-keyboard-panes" class="tab-content">
+				</div>
+			</div>
 		</div>
 	</main>
 
 	<!-- Alert templates -->
 	<template id="my-alert-midi-not-granted">
-		<div class="alert alert-warning" role="alert">
+		<div class="alert alert-warning pb-0" role="alert">
 			<p>This application needs the permission to connect to MIDI devices (with SysEx). To connect MIDI devices, you have to:</p>
 			<ul>
 				<li>Chrome / Edge: 
@@ -480,7 +515,7 @@ window.addEventListener('DOMContentLoaded', () => {
 		</div>
 	</template>
 	<template id="my-alert-midi-not-supported">
-		<div class="alert alert-danger" role="alert">
+		<div class="alert alert-danger pb-0" role="alert">
 			<p>This application doesn't work on your browser.</p>
 		</div>
 	</template>
