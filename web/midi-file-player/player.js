@@ -5,7 +5,7 @@ export class MidiPlayer {
 		this._events = [];
 		this._timerId = 0;
 		this._playSpeed = 1.0;
-		this._sentTimeStamp = 0.0;
+		this._nextSpeed = 1.0;
 
 		this.stop();
 		this.setInterval(100, 500);	// default values
@@ -35,6 +35,7 @@ export class MidiPlayer {
 
 	stop() {
 		this._sentIndex = -1;
+		this._sentTimings = [];
 
 		this._clearTimeOut();
 		this._changeState('stop');
@@ -48,10 +49,16 @@ export class MidiPlayer {
 			return;
 		}
 
-		// Sets the current timestamp and event as the base point.
-		// Note: If any "reserved" MIDI events exist (= the latest event's timestamp is ahead to the current timestamp),
-		// keeps the current latest event's timestamp to keep the order of the MIDI events.
-		this._sentTimeStamp = Math.max(performance.now(), this._sentTimeStamp);
+		// Clears the timing logs before the current timestamp.
+		// Note: In most cases, all logs will be cleared.
+		// If any "reserved" MIDI events exist, one element (with timestamp which is ahead to the current timestamp) will remain.
+		const timestamp = performance.now();
+		const position = this.getCurrentUsec(timestamp);
+		this._sentTimings = this._sentTimings.filter((e) => e.timestamp >= timestamp);
+		if (this._sentTimings.length === 0) {
+			this._sentTimings.push({timestamp, position});
+		}
+		console.assert(this._sentTimings.length === 1);
 
 		// Kicks the main loop.
 		this._clearTimeOut();
@@ -70,17 +77,8 @@ export class MidiPlayer {
 
 	setSpeed(speed) {
 		console.assert(speed > 0.0);
-		if (speed === this._playSpeed) {
-			return;
-		}
 
-		this._playSpeed = speed;
-
-		// Re-triggers the main loop.
-		if (this._state === 'play') {
-			this._clearTimeOut();
-			this._doMainLoop();
-		}
+		this._nextSpeed = speed;
 	}
 
 	setInterval(intervalMsec, preprocessMsec) {
@@ -97,17 +95,32 @@ export class MidiPlayer {
 		}
 	}
 
-	getCurrentUsec(timestamp = -1) {
-		if (timestamp >= 0 && this._sentIndex >= 0) {
-			if (this._state === 'play' || timestamp < this._sentTimeStamp) {
-				return Math.max(this._events[this._sentIndex].usec + (timestamp - this._sentTimeStamp) * 1000 * this._playSpeed, 0.0);
-			} else {
-				return this._events[this._sentIndex].usec;
-			}
-		} else {
+	getCurrentUsec(timestamp) {
+		console.assert(!Number.isNaN(timestamp) && timestamp >= 0.0);
+		if (this._sentTimings.length === 0) {
 			return 0.0;
 		}
 
+		// Calculates the current playing position.
+		let position = 0.0;
+		const last = this._sentTimings[this._sentTimings.length - 1];
+		const index = this._sentTimings.findIndex((e) => timestamp < e.timestamp);
+		if (index <= 0) {	// Including the case where index === 0.
+			// Calculates from the base position and past time.
+			position = Math.max(last.position + (timestamp - last.timestamp) * 1000 * this._playSpeed, 0.0);
+
+		} else {
+			// Calculates from the position between two points.
+			const begin = this._sentTimings[index - 1];
+			const end   = this._sentTimings[index];
+			console.assert(begin.timestamp <= timestamp && timestamp <= end.timestamp);
+			const rate = (timestamp - begin.timestamp) / (end.timestamp - begin.timestamp);
+			console.assert(0.0 <= rate && rate <= 1.0);
+			position =  begin.position + (end.position - begin.position) * rate;
+		}
+
+		// If the current state is not "play", the current playing position is not advanced beyond the last sent position.
+		return (this._state === 'play') ? position : Math.min(position, last.position);
 	}
 
 	getTotalUsec() {
@@ -128,22 +141,17 @@ export class MidiPlayer {
 	}
 
 	_doMainLoop() {
-		if (this._state !== 'play' || this._events.length === 0) {
+		if (this._state !== 'play' || this._events.length === 0 || this._sentTimings.length === 0) {
 			console.warn('Something wrong.');
 			return;
 		}
 
-		// Determines which events to be handled.
-		const now = performance.now();
-		if (this._sentTimeStamp === 0.0) {
-			console.assert(this._sentIndex < 0);
-			this._sentTimeStamp = now;
-		}
-		const baseEvent   = (this._sentIndex >= 0) ? this._events[this._sentIndex] : this._events[0];
-		const currentUsec = baseEvent.usec + (now - this._sentTimeStamp) * 1000 * this._playSpeed;
-		const preprocessUsec = currentUsec + this._preprocessMsec * 1000 * this._playSpeed;
+		// Reflects the change of play speed.
+		this._playSpeed = this._nextSpeed;
 
-		const baseTimestamp = this._sentTimeStamp;
+		// Determines which events to be handled.
+		const preprocessUsec = this.getCurrentUsec(performance.now()) + this._preprocessMsec * 1000 * this._playSpeed;
+		const base = this._sentTimings[this._sentTimings.length - 1];
 		const sendEvents = [];
 		for (let i = this._sentIndex + 1; i < this._events.length; i++) {
 			const event = this._events[i];
@@ -151,16 +159,21 @@ export class MidiPlayer {
 				break;
 			}
 
-			const timestamp = Math.max(baseTimestamp + ((event.usec - baseEvent.usec) / 1000 / this._playSpeed), this._sentTimeStamp);
+			// Adds a timestamp that the event will be sent.
+			const timestamp = base.timestamp + ((event.usec - base.position) / 1000 / this._playSpeed);
 			sendEvents.push({...event, timestamp});
-
-			this._sentIndex = i;
-			this._sentTimeStamp = timestamp;
 		}
+		this._sentIndex += sendEvents.length;
 
-		// Sends MIDI events.
+		// Handles the chosen events.
 		if (sendEvents.length > 0) {
+			// Sends MIDI events.
 			this._eventHandler(sendEvents);
+
+			// Stores timing logs.
+			const {timestamp, usec} = sendEvents[sendEvents.length - 1];
+			console.assert(usec === this._events[this._sentIndex].usec);
+			this._sentTimings.push({timestamp, position: usec});
 		}
 
 		// If the current position is the end of the song, moves to "stop" state.
