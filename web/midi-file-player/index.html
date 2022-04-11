@@ -364,7 +364,7 @@ window.addEventListener('DOMContentLoaded', () => {
 	});
 
 	document.addEventListener('visibilitychange', () => {
-		const [intervalMsec, preprocessMsec] = (document.visibilityState === 'visible') ? [100, 500] : [1000, 2000];
+		const [intervalMsec, preprocessMsec] = (document.visibilityState === 'visible') ? [100, 500] : [1000, 3000];
 		player.setInterval(intervalMsec, preprocessMsec);
 	});
 
