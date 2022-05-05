@@ -40,7 +40,7 @@ window.addEventListener('DOMContentLoaded', () => {
 	elemSerialMidi.addEventListener('click', async () => {
 		await prepareForSerialMidi();
 	});
-	if (!'serial' in navigator) {
+	if (!('serial' in navigator)) {
 		elemSerialMidi.disabled = true;
 	}
 
