@@ -13,6 +13,7 @@ import {MidiPlayer} from './player.js';
 import {decodeLegacyText} from './legacy_textdecoder.js';
 import './sound-canvas-lcd/sound_canvas_lcd_ex.js';
 import './keyboard_indicator.js';
+import {requestMIDIAccess, prepareForSerialMidi} from './web-serial-midi/web_serial_midi.js';
 
 window.addEventListener('DOMContentLoaded', () => {
 	const elemLcd      = document.getElementById('my-lcd');
@@ -34,13 +35,34 @@ window.addEventListener('DOMContentLoaded', () => {
 	}
 	const elemKeyboards = [...document.querySelectorAll('keyboard-indicator[id^=my-keyboard-]')];
 
+	// Kicks Serial MIDI via user gesture.
+	const elemSerialMidi = document.getElementById('my-serial-midi');
+	elemSerialMidi.addEventListener('click', async () => {
+		await prepareForSerialMidi();
+	});
+	if (!'serial' in navigator) {
+		elemSerialMidi.disabled = true;
+	}
+
 	// Sets up Web MIDI API.
 	const currentMidiOuts = elemMidiOuts.map(() => null);
 	(async () => {
 		// Sets up MIDI devices.
-		const midiAccess = await navigator.requestMIDIAccess({sysex: true});
-		midiAccess.addEventListener('statechange', updateMidiDevices);
-		updateMidiDevices();
+		const midiAccesses = [];
+		await Promise.any([
+			// Normal MIDI
+			navigator.requestMIDIAccess({sysex: true}).then((midiAccess) => {
+				midiAccess.addEventListener('statechange', updateMidiDevices);
+				midiAccesses.push(midiAccess);
+				updateMidiDevices();
+			}),
+			// Serial MIDI
+			requestMIDIAccess({sysex: true}).then((midiAccess) => {
+				midiAccess.addEventListener('statechange', updateMidiDevices);
+				midiAccesses.push(midiAccess);
+				updateMidiDevices();
+			}),
+		]);
 
 		// Switches current MIDI devices.
 		elemMidiOuts.forEach((elem, i) => {
@@ -48,7 +70,7 @@ window.addEventListener('DOMContentLoaded', () => {
 				currentMidiOuts[i] = null;
 
 				const id = event.target.options[event.target.selectedIndex].dataset.device;
-				for (const output of [...midiAccess.outputs.values()]) {
+				for (const output of midiAccesses.map((midiAccess) => [...midiAccess.outputs.values()]).flat()) {
 					if (output.id === id) {
 						currentMidiOuts[i] = output;
 						break;
@@ -67,7 +89,7 @@ window.addEventListener('DOMContentLoaded', () => {
 				// Updates the list.
 				const elemMidiOut = elemMidiOuts[i];
 				elemMidiOut.innerHTML = '<option>Disconnected</option>';
-				for (const output of [...midiAccess.outputs.values()]) {
+				for (const output of midiAccesses.map((midiAccess) => [...midiAccess.outputs.values()]).flat()) {
 					const isSelected = (currentMidiOuts[i]?.id === output.id);
 					elemMidiOut.insertAdjacentHTML('beforeend', `<option id="${elemMidiOut.id}-${output.id}" ${(isSelected) ? 'selected' : ''} data-device="${output.id}">${output.name}</option>`);
 				}
@@ -390,34 +412,39 @@ window.addEventListener('DOMContentLoaded', () => {
 	<nav class="navbar navbar-light bg-light">
 		<div class="container align-items-start">
 			<h1 class="h6 mt-1"><span class="navbar-brand">Simple MIDI File Player</span></h1>
-			<div class="position-relative">
-				<div class="input-group">
-					<label for="my-midiout-0" class="input-group-text position-relative" style="width: 8rem;">MIDI Out A
-						<span id="my-midiled-0" class="badge bg-primary rounded-pill me-2 position-absolute top-50 end-0 translate-middle-y" style="animation: midi-in-led both;">&nbsp;</span>
-					</label>
-					<select id="my-midiout-0" class="form-select form-select-sm" style="width: 12rem;"></select>
+			<div class="d-flex flex-row">
+				<div>
+					<button id="my-serial-midi" type="button" class="btn btn-outline-secondary me-1">Serial MIDI</button>
 				</div>
-				<div id="my-collapse-midiout" class="collapse">
+				<div class="position-relative">
 					<div class="input-group">
-						<label for="my-midiout-1" class="input-group-text position-relative" style="width: 8rem;">MIDI Out B
-							<span id="my-midiled-1" class="badge bg-primary rounded-pill me-2 position-absolute top-50 end-0 translate-middle-y" style="animation: midi-in-led both;">&nbsp;</span>
+						<label for="my-midiout-0" class="input-group-text position-relative" style="width: 8rem;">MIDI Out A
+							<span id="my-midiled-0" class="badge bg-primary rounded-pill me-2 position-absolute top-50 end-0 translate-middle-y" style="animation: midi-in-led both;">&nbsp;</span>
 						</label>
-						<select id="my-midiout-1" class="form-select form-select-sm" style="width: 12rem;"></select>
+						<select id="my-midiout-0" class="form-select form-select-sm" style="width: 12rem;"></select>
 					</div>
-					<div class="input-group">
-						<label for="my-midiout-2" class="input-group-text position-relative" style="width: 8rem;">MIDI Out C
-							<span id="my-midiled-2" class="badge bg-primary rounded-pill me-2 position-absolute top-50 end-0 translate-middle-y" style="animation: midi-in-led both;">&nbsp;</span>
-						</label>
-						<select id="my-midiout-2" class="form-select form-select-sm" style="width: 12rem;"></select>
+					<div id="my-collapse-midiout" class="collapse">
+						<div class="input-group">
+							<label for="my-midiout-1" class="input-group-text position-relative" style="width: 8rem;">MIDI Out B
+								<span id="my-midiled-1" class="badge bg-primary rounded-pill me-2 position-absolute top-50 end-0 translate-middle-y" style="animation: midi-in-led both;">&nbsp;</span>
+							</label>
+							<select id="my-midiout-1" class="form-select form-select-sm" style="width: 12rem;"></select>
+						</div>
+						<div class="input-group">
+							<label for="my-midiout-2" class="input-group-text position-relative" style="width: 8rem;">MIDI Out C
+								<span id="my-midiled-2" class="badge bg-primary rounded-pill me-2 position-absolute top-50 end-0 translate-middle-y" style="animation: midi-in-led both;">&nbsp;</span>
+							</label>
+							<select id="my-midiout-2" class="form-select form-select-sm" style="width: 12rem;"></select>
+						</div>
+						<div class="input-group">
+							<label for="my-midiout-3" class="input-group-text position-relative" style="width: 8rem;">MIDI Out D
+								<span id="my-midiled-3" class="badge bg-primary rounded-pill me-2 position-absolute top-50 end-0 translate-middle-y" style="animation: midi-in-led both;">&nbsp;</span>
+							</label>
+							<select id="my-midiout-3" class="form-select form-select-sm" style="width: 12rem;"></select>	
+						</div>
 					</div>
-					<div class="input-group">
-						<label for="my-midiout-3" class="input-group-text position-relative" style="width: 8rem;">MIDI Out D
-							<span id="my-midiled-3" class="badge bg-primary rounded-pill me-2 position-absolute top-50 end-0 translate-middle-y" style="animation: midi-in-led both;">&nbsp;</span>
-						</label>
-						<select id="my-midiout-3" class="form-select form-select-sm" style="width: 12rem;"></select>	
-					</div>
+					<button type="button" class="btn btn-outline-secondary dropdown-toggle ms-1 position-absolute start-100 top-0" data-bs-toggle="collapse" data-bs-target="#my-collapse-midiout"></button>
 				</div>
-				<button type="button" class="btn btn-outline-secondary dropdown-toggle ms-1 position-absolute start-100 top-0" data-bs-toggle="collapse" data-bs-target="#my-collapse-midiout"></button>
 			</div>
 		</div>
 	</nav>
