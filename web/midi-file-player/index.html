@@ -223,9 +223,11 @@ window.addEventListener('DOMContentLoaded', () => {
 				// Flashes the LEDs.
 				for (const portNo of new Set(targetEvents.map((event) => event.portNo))) {
 					const elemMidiLed = elemMidiLeds[portNo];
-					elemMidiLed.style.animation = '';
-					void elemMidiLed.offsetLeft;	// Force layout
-					elemMidiLed.style.animation = `midi-in-led 0.2s forwards`;
+					if (elemMidiLed) {
+						elemMidiLed.style.animation = '';
+						void elemMidiLed.offsetLeft;	// Force layout
+						elemMidiLed.style.animation = `midi-in-led 0.2s forwards`;
+					}
 				}
 
 				// Updates the current position.
