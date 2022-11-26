@@ -1,3 +1,6 @@
 [submodule "midiana"]
 	path = midiana
 	url = https://github.com/shingo45endo/midiana.git
+[submodule "sound-canvas-lcd"]
+	path = sound-canvas-lcd
+	url = https://github.com/shingo45endo/sound-canvas-lcd.git
