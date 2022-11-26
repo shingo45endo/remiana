@@ -4,3 +4,6 @@
 [submodule "sound-canvas-lcd"]
 	path = sound-canvas-lcd
 	url = https://github.com/shingo45endo/sound-canvas-lcd.git
+[submodule "web-serial-midi"]
+	path = web-serial-midi
+	url = https://github.com/shingo45endo/web-serial-midi.git
