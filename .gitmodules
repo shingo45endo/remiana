@@ -1,0 +1,3 @@
+[submodule "midiana"]
+	path = midiana
+	url = https://github.com/shingo45endo/midiana.git
