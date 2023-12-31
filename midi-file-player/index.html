@@ -8,12 +8,15 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p" crossorigin="anonymous"></script>
 <script type="module">
 import {parseMidiFile} from '../midiana/lib/file-parser/midi_file_parser.js';
+import {bytesToHex} from '../midiana/lib/event-analyzer/utilities.js';
 import {MidiPort} from '../midiana/lib/module-simulator/midi_port.js';
 import {MidiPlayer} from './player.js';
 import {decodeLegacyText} from './legacy_textdecoder.js';
 import '../sound-canvas-lcd/sound_canvas_lcd_ex.js';
 import './keyboard_indicator.js';
 import {requestMIDIAccess, prepareForSerialMidi} from '../web-serial-midi/web_serial_midi.js';
+
+const worker = new Worker(import.meta.url.replace(/\/[^/]*$/u, '/parser_worker.js'), {type: 'module'});
 
 window.addEventListener('DOMContentLoaded', () => {
 	const elemLcd      = document.getElementById('my-lcd');
@@ -22,6 +25,7 @@ window.addEventListener('DOMContentLoaded', () => {
 	const elemPosition = document.getElementById('my-position');
 	const elemTempo    = document.getElementById('my-tempo');
 	const elemTimeSig  = document.getElementById('my-timesig');
+	const elemLog      = document.getElementById('my-log');
 	const elemMidiOuts = [...document.querySelectorAll('[id^=my-midiout-]')];
 	const elemMidiLeds = [...document.querySelectorAll('[id^=my-midiled-]')];
 
@@ -111,6 +115,111 @@ window.addEventListener('DOMContentLoaded', () => {
 	const player = new MidiPlayer(handleMidiEvents, handleNotifyEvent);
 	let currentSong;
 
+	worker.addEventListener('message', (e) => {
+		// Makes a whole HTML for SysEx.
+		const htmlDetails = e.data.map(({mes, params}) => {
+			const {mfrName, modelName, commandName, subCommandName, bytes} = mes;
+
+			let htmlCommand = '';
+			if (mfrName) {
+				htmlCommand += `<span class="badge bg-secondary">${mfrName}</span> `;
+			}
+			if (modelName) {
+				htmlCommand += `<span class="badge bg-primary">${modelName}</span> `;
+			}
+			if (commandName) {
+				htmlCommand += `<span class="">${commandName}</span>: `;
+			}
+
+			let htmlParameter = '';
+			let htmlInner = '';
+			if (params.length === 0) {
+				htmlParameter = `<div class="text-truncate"><code>${bytesToHex(bytes)}</code></div>`;
+
+			} else {
+				const {address, paramNames, format, unit, valueText, valueHtml} = params[0];
+				if (address) {
+					htmlParameter += `<code>[${bytesToHex(address)}]</code> `;
+				}
+				if (subCommandName) {
+					htmlParameter += `<span class="">${subCommandName}</span>: `;
+				}
+				if (paramNames) {
+					htmlParameter += `<span class="">${(paramNames ?? []).join(' <span class="text-muted">&gt;</span> ')}</span>: `;
+				}
+
+				if (valueHtml) {
+					const m = valueHtml.match(/<(\w+)/u);
+					const tagName = m?.[1];
+					switch (tagName.toLowerCase()) {
+					case 'svg':
+						htmlParameter += `<img style="height: 1lh;" src="data:image/svg+xml;base64,${btoa(valueHtml)}">`;
+						break;
+					case 'table':
+						htmlParameter += valueHtml;
+						break;
+					}
+
+				} else if (valueText) {
+					const text = `${formatText(format, valueText)}${(unit) ? ` [${unit}]` : ''}`;
+					htmlParameter += `<mark>${text}</mark>`;
+				}
+
+				htmlInner += `<div class="text-truncate"><code>${bytesToHex(bytes)}</code></div>`;
+			}
+
+			if (params.length > 1) {
+				for (const param of params.slice(1)) {
+					let htmlInnerLine = '';
+					const {address, paramNames, format, unit, valueText, valueHtml} = param;
+					if (address) {
+						htmlInnerLine += `<code>[${bytesToHex(address)}]</code> `;
+					}
+					if (paramNames) {
+						htmlInnerLine += `<span class="">${(paramNames ?? []).join(' <span class="text-muted">&gt;</span> ')}</span>: `;
+					}
+					if (valueText) {
+						const text = formatText(format, valueText);
+						htmlInnerLine += `<mark>${text}${(unit) ? ` [${unit}]` : ''}</mark>`;
+					}
+
+					htmlInner += `<div class="ms-3">${htmlInnerLine}</div>`;
+				}
+			}
+
+			return `
+				<details style="content-visibility: auto; contain-intrinsic-size: 200px;">
+					<summary class="d-flex flex-row">
+						<div class="my-log-commands flex-grow-0 text-nowrap me-2" style="width: 20rem;">
+							${htmlCommand}
+						</div>
+						<div class="my-log-parameters flex-grow-1 flex-shrink-0 text-nowrap me-1">
+							${htmlParameter}
+						</div>
+					</summary>
+					<div class="my-log-details pb-1">
+						${htmlInner}
+					</div>
+				</details>`;
+		});
+		elemLog.insertAdjacentHTML('beforeend', htmlDetails.join(''));
+
+		// Scrolls to the bottom of the log area.
+		elemLog.parentElement.scrollTop = elemLog.scrollHeight;
+
+		function formatText(format, valueText) {
+			if (Number.isFinite(valueText)) {
+				return String(valueText);
+			} else if (valueText?.includes('\n')) {
+				return `\n${valueText}`.replaceAll('\n', '\n\t');
+			} else if (format?.startsWith('ascii')) {
+				return `"<code>${valueText}</code>"`
+			} else {
+				return valueText;
+			}
+		}
+	});
+
 	function handleMidiEvents(events) {
 		// Queues the received events to the event queue.
 		queueEvents.push(...events);
@@ -139,14 +248,22 @@ window.addEventListener('DOMContentLoaded', () => {
 			// Sends a MIDI event to the MIDI device corresponding to the port No.
 			const timestamp = events[0].timestamp;
 			for (let portNo = 0; portNo < currentMidiOuts.length; portNo++) {
+				const sendEvents = midiPorts[portNo].popEvents();
+				if (sendEvents.length === 0) {
+					continue;
+				}
+
+				// Sends a MIDI event to a port.
 				try {
-					const sendEvents = midiPorts[portNo].popEvents();
-					if (sendEvents.length > 0) {
-						currentMidiOuts[portNo].send(sendEvents.flat(), timestamp);
-					}
+					currentMidiOuts[portNo].send(sendEvents.flat(), timestamp);
 				} catch (e) {
 					console.error(e);
 				}
+
+				// Sends a SysEx event to the worker to analyze it.
+				sendEvents.filter((bytes) => bytes[0] === 0xf0).forEach((bytes) => {
+					worker.postMessage(bytes);
+				});
 			}
 
 			if (delayMsec === 0 && timestamp < now) {
@@ -322,6 +439,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
 		player.stop();
 		document.getElementById('my-title').textContent = e.dataTransfer.files[0].name;
+		elemLog.innerHTML = '';
 
 		try {
 			// Loads the MIDI file.
@@ -398,6 +516,10 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 <style>
+#my-log table {
+	width: 100%;
+}
+
 .fade {
 	transition-duration: 0.05s;
 }
@@ -519,6 +641,16 @@ window.addEventListener('DOMContentLoaded', () => {
 				<ul id="my-keyboard-tabs" class="nav nav-tabs" role="tablist">
 				</ul>
 				<div id="my-keyboard-panes" class="tab-content">
+				</div>
+			</div>
+		</div>
+		<div class="row">
+			<div class="col-12">
+				<div class="card">
+					<div class="card-body" style="height: 12rem; min-height: 8rem; overflow-y: auto;">
+						<div id="my-log" class="overflow-x-scroll">
+						</div>
+					</div>
 				</div>
 			</div>
 		</div>
