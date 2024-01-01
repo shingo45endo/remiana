@@ -131,39 +131,46 @@ window.addEventListener('DOMContentLoaded', () => {
 				htmlCommand += `<span class="">${commandName}</span>: `;
 			}
 
-			let htmlParameter = '';
+			let htmlParamDesc = '';
 			let htmlInner = '';
 			if (params.length === 0) {
-				htmlParameter = `<div class="text-truncate"><code>${bytesToHex(bytes)}</code></div>`;
+				htmlParamDesc = `<div class="text-truncate"><code>${bytesToHex(bytes)}</code></div>`;
 
 			} else {
-				const {address, paramNames, format, unit, valueText, valueHtml} = params[0];
+				const {address, paramNames, format, unit, values, valueText, valueHtml} = params[0];
 				if (address) {
-					htmlParameter += `<code>[${bytesToHex(address)}]</code> `;
+					htmlParamDesc += `<code>[${bytesToHex(address)}]</code> `;
 				}
 				if (subCommandName) {
-					htmlParameter += `<span class="">${subCommandName}</span>: `;
+					htmlParamDesc += `<span class="">${subCommandName}</span>: `;
 				}
 				if (paramNames) {
-					htmlParameter += `<span class="">${(paramNames ?? []).join(' <span class="text-muted">&gt;</span> ')}</span>: `;
+					htmlParamDesc += `<span class="">${(paramNames ?? []).join(' <span class="text-muted">&gt;</span> ')}</span>: `;
 				}
 
+				let htmlParamValue = '';
 				if (valueHtml) {
 					const m = valueHtml.match(/<(\w+)/u);
 					const tagName = m?.[1];
 					switch (tagName.toLowerCase()) {
 					case 'svg':
-						htmlParameter += `<img style="height: 1lh;" src="data:image/svg+xml;base64,${btoa(valueHtml)}">`;
+						htmlParamValue = `<img style="height: 1lh;" src="data:image/svg+xml;base64,${btoa(valueHtml)}">`;
 						break;
 					case 'table':
-						htmlParameter += valueHtml;
+						htmlParamValue = valueHtml;
 						break;
+					// no default
 					}
-
-				} else if (valueText) {
-					const text = `${formatText(format, valueText)}${(unit) ? ` [${unit}]` : ''}`;
-					htmlParameter += `<mark>${text}</mark>`;
 				}
+				if (!htmlParamValue && valueText) {
+					const text = `${formatText(format, valueText)}${(unit) ? ` [${unit}]` : ''}`;
+					htmlParamValue = `<mark>${text}</mark>`;
+				}
+				if (!htmlParamValue) {
+					htmlParamValue = values.join(', ');
+				}
+				console.assert(htmlParamValue);
+				htmlParamDesc += htmlParamValue;
 
 				htmlInner += `<div class="text-truncate"><code>${bytesToHex(bytes)}</code></div>`;
 			}
@@ -171,7 +178,7 @@ window.addEventListener('DOMContentLoaded', () => {
 			if (params.length > 1) {
 				for (const param of params.slice(1)) {
 					let htmlInnerLine = '';
-					const {address, paramNames, format, unit, valueText, valueHtml} = param;
+					const {address, paramNames, format, unit, valueText} = param;
 					if (address) {
 						htmlInnerLine += `<code>[${bytesToHex(address)}]</code> `;
 					}
@@ -194,7 +201,7 @@ window.addEventListener('DOMContentLoaded', () => {
 							${htmlCommand}
 						</div>
 						<div class="my-log-parameters flex-grow-1 flex-shrink-0 text-nowrap me-1">
-							${htmlParameter}
+							${htmlParamDesc}
 						</div>
 					</summary>
 					<div class="my-log-details pb-1">
@@ -213,7 +220,7 @@ window.addEventListener('DOMContentLoaded', () => {
 			} else if (valueText?.includes('\n')) {
 				return `\n${valueText}`.replaceAll('\n', '\n\t');
 			} else if (format?.startsWith('ascii')) {
-				return `"<code>${valueText}</code>"`
+				return `"<code>${valueText}</code>"`;
 			} else {
 				return valueText;
 			}
