@@ -16,7 +16,7 @@ import '../sound-canvas-lcd/sound_canvas_lcd_ex.js';
 import './keyboard_indicator.js';
 import {requestMIDIAccess, prepareForSerialMidi} from '../web-serial-midi/web_serial_midi.js';
 
-const worker = new Worker(import.meta.url.replace(/\/[^/]*$/u, '/parser_worker.js'), {type: 'module'});
+const workerSysEx = new Worker(import.meta.url.replace(/\/[^/]*$/u, '/sysex_parser_worker.js'), {type: 'module'});
 
 window.addEventListener('DOMContentLoaded', () => {
 	const elemLcd      = document.getElementById('my-lcd');
@@ -115,7 +115,7 @@ window.addEventListener('DOMContentLoaded', () => {
 	const player = new MidiPlayer(handleMidiEvents, handleNotifyEvent);
 	let currentSong;
 
-	worker.addEventListener('message', (e) => {
+	workerSysEx.addEventListener('message', (e) => {
 		// Makes a whole HTML for SysEx.
 		const htmlDetails = e.data.map(({mes, params}) => {
 			const {mfrName, modelName, commandName, subCommandName, bytes} = mes;
@@ -262,7 +262,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
 				// Sends a SysEx event to the worker to analyze it.
 				sendEvents.filter((bytes) => bytes[0] === 0xf0).forEach((bytes) => {
-					worker.postMessage(bytes);
+					workerSysEx.postMessage(bytes);
 				});
 			}
 
