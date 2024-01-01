@@ -243,6 +243,7 @@ window.addEventListener('DOMContentLoaded', () => {
 		// Sends MIDI events to the MIDI devices.
 		const now = performance.now();
 		let delayMsec = 0;
+		const sysExs = [];
 		for (const events of eventClusters) {
 			// Pushes all the events at the same time to MidiPort.
 			for (const event of events) {
@@ -267,15 +268,18 @@ window.addEventListener('DOMContentLoaded', () => {
 					console.error(e);
 				}
 
-				// Sends a SysEx event to the worker to analyze it.
-				sendEvents.filter((bytes) => bytes[0] === 0xf0).forEach((bytes) => {
-					workerSysEx.postMessage(bytes);
-				});
+				// Extracts SysEx events.
+				sysExs.push(...sendEvents.filter((bytes) => bytes[0] === 0xf0));
 			}
 
 			if (delayMsec === 0 && timestamp < now) {
 				delayMsec = now - timestamp;
 			}
+		}
+
+		// Sends SysEx events to the worker to analyze them.
+		if (sysExs.length > 0) {
+			workerSysEx.postMessage(sysExs);
 		}
 
 		if (delayMsec > 0) {

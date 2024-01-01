@@ -4,9 +4,13 @@ import {analyzeSysExParams} from '../midiana/lib/event-analyzer/param.js';
 let queueItems = [];
 
 self.addEventListener('message', (e) => {
-	const mes = analyzeMidiMessage(e.data);
-	const params = analyzeSysExParams(mes) ?? [];
-	queueItems.push({mes, params});
+	console.assert(Array.isArray(e.data));
+
+	for (const bytes of e.data) {
+		const mes = analyzeMidiMessage(bytes);
+		const params = analyzeSysExParams(mes) ?? [];
+		queueItems.push({mes, params});
+	}
 });
 
 setInterval(() => {
