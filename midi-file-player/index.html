@@ -154,7 +154,7 @@ window.addEventListener('DOMContentLoaded', () => {
 					const tagName = m?.[1];
 					switch (tagName.toLowerCase()) {
 					case 'svg':
-						htmlParamValue = `<img style="height: 1lh;" src="data:image/svg+xml;base64,${btoa(valueHtml)}">`;
+						htmlParamValue = `<img loading="lazy" style="height: 1lh;" src="data:image/svg+xml;base64,${btoa(valueHtml)}">`;
 						break;
 					case 'table':
 						htmlParamValue = valueHtml;
@@ -393,7 +393,7 @@ window.addEventListener('DOMContentLoaded', () => {
 		};
 	})();
 
-	async function waitForQueueEmpty(timeout = 1000) {
+	async function waitForQueueEmpty(timeout = 3000 + 1000) {
 		return await new Promise((resolve) => {
 			const baseTimestamp = performance.now();	// For timeout
 			const timerId = setInterval(() => {

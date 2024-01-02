@@ -7,3 +7,6 @@
 [submodule "web-serial-midi"]
 	path = web-serial-midi
 	url = https://github.com/shingo45endo/web-serial-midi.git
+[submodule "rcm2smf"]
+	path = rcm2smf
+	url = https://github.com/shingo45endo/rcm2smf.git
