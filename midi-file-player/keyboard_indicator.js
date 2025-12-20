@@ -1,10 +1,30 @@
-const KEY_WIDTH  =  8;
-const KEY_HEIGHT = 24;
-const SHARP_WIDTH_RATE  = 10 / 16;
-const SHARP_HEIGHT_RATE = 11 / 16;
+const HEIGHT_RATE = 0.5;
+const SHARP_HEIGHT_RATE = 95 / 150;
+
+const BOTTOM_KEY_WIDTH = 8;
+const OCTAVE_WIDTH = BOTTOM_KEY_WIDTH * 7;
+const LEFTSIDE_TOP_KEY_WIDTH  = BOTTOM_KEY_WIDTH * 3 / 5;
+const RIGHTSIDE_TOP_KEY_WIDTH = BOTTOM_KEY_WIDTH * 4 / 7;
+const KEY_HEIGHT = OCTAVE_WIDTH * 150 / 165 * HEIGHT_RATE;
+
+const offsetsX = [...Array(12)].map((_, i) => {
+	if (i < 5) {
+		if (isBlackKey(i)) {
+			return LEFTSIDE_TOP_KEY_WIDTH * i;
+		} else {
+			return BOTTOM_KEY_WIDTH * Math.trunc(i / 2);
+		}
+	} else {
+		if (isBlackKey(i)) {
+			return LEFTSIDE_TOP_KEY_WIDTH * 5 + RIGHTSIDE_TOP_KEY_WIDTH * (i - 5);
+		} else {
+			return LEFTSIDE_TOP_KEY_WIDTH * 5 + BOTTOM_KEY_WIDTH * Math.trunc((i - 5) / 2);
+		}
+	}
+});
 
 const elemSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-elemSvg.setAttribute('viewBox', `0 0 ${KEY_WIDTH * 75} ${KEY_HEIGHT}`);
+elemSvg.setAttribute('viewBox', `0 0 ${BOTTOM_KEY_WIDTH * 75} ${KEY_HEIGHT}`);
 elemSvg.innerHTML = `
 <style type="text/css">
 :host {
@@ -46,20 +66,21 @@ rect.active {
 </defs>
 ${makeKeyStr()}`;
 
+function isBlackKey(noteNo) {
+	return [1, 3, 6, 8, 10].includes(noteNo % 12);
+}
+
 function makeKeyStr() {
 	let str = '';
 
-	const offsets = [0, 1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12];
-	for (let i = 0; i < 128; i++) {
-		if (offsets[i % offsets.length] % 2 === 0) {
-			const offsetX = 7 * Math.trunc(i / 12) + offsets[i % offsets.length] / 2;
-			str += `<rect id="note${i}" class="white" x="${KEY_WIDTH * offsetX}" y="0" width="${KEY_WIDTH}" height="${KEY_HEIGHT}" fill="url(#gradient-white-base)" />`;
+	for (let noteNo = 0; noteNo < 128; noteNo++) {
+		if (!isBlackKey(noteNo)) {
+			str += `<rect id="note${noteNo}" class="white" x="${OCTAVE_WIDTH * Math.trunc(noteNo / 12) + offsetsX[noteNo % 12]}" y="0" width="${BOTTOM_KEY_WIDTH}" height="${KEY_HEIGHT}" fill="url(#gradient-white-base)" />`;
 		}
 	}
-	for (let i = 0; i < 128; i++) {
-		if (offsets[i % offsets.length] % 2 !== 0) {
-			const offsetX = 7 * Math.trunc(i / 12) + offsets[i % offsets.length] / 2;
-			str += `<rect id="note${i}" class="black" x="${KEY_WIDTH * offsetX + (KEY_WIDTH * (1 - SHARP_WIDTH_RATE) / 2)}" y="0" width="${KEY_WIDTH * SHARP_WIDTH_RATE}" height="${KEY_HEIGHT * SHARP_HEIGHT_RATE}" fill="url(#gradient-black-base)" />`;
+	for (let noteNo = 0; noteNo < 128; noteNo++) {
+		if (isBlackKey(noteNo)) {
+			str += `<rect id="note${noteNo}" class="black" x="${OCTAVE_WIDTH * Math.trunc(noteNo / 12) + offsetsX[noteNo % 12]}" y="0" width="${(noteNo % 12 < 5) ? LEFTSIDE_TOP_KEY_WIDTH : RIGHTSIDE_TOP_KEY_WIDTH}" height="${KEY_HEIGHT * SHARP_HEIGHT_RATE}" fill="url(#gradient-black-base)" />`;
 		}
 	}
 
