@@ -212,7 +212,7 @@ window.addEventListener('DOMContentLoaded', () => {
 		elemLog.insertAdjacentHTML('beforeend', htmlDetails.join(''));
 
 		// Scrolls to the bottom of the log area.
-		elemLog.parentElement.scrollTop = elemLog.scrollHeight;
+		elemLog.scrollTop = elemLog.scrollHeight;
 
 		function formatText(format, valueText) {
 			if (Number.isFinite(valueText)) {
@@ -530,7 +530,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
 <body>
 	<!-- Navbar -->
-	<nav class="navbar navbar-light bg-light">
+	<nav class="navbar navbar-light bg-light fixed-top">
 		<div class="container align-items-start">
 			<h1 class="h6 mt-1"><span class="navbar-brand">Simple MIDI File Player</span></h1>
 			<div class="d-flex flex-row">
@@ -571,7 +571,7 @@ window.addEventListener('DOMContentLoaded', () => {
 	</nav>
 
 	<!-- Main screen -->
-	<main class="container mt-2">
+	<main class="container vh-100 d-flex flex-column" style="padding-top: 4rem;">
 		<div class="row">
 			<div class="col-lg-12 col-xl-6 mt-xl-5">
 				<sound-canvas-lcd-ex id="my-lcd"></sound-canvas-lcd-ex>
@@ -641,11 +641,11 @@ window.addEventListener('DOMContentLoaded', () => {
 				</div>
 			</div>
 		</div>
-		<div class="row">
-			<div class="col-12">
-				<div class="card">
-					<div class="card-body" style="height: 12rem; min-height: 8rem; overflow-y: auto;">
-						<div id="my-log" class="overflow-x-scroll">
+		<div class="row h-100 pb-2" style="min-height: 12rem;">
+			<div class="col-12 h-100">
+				<div class="card h-100 d-flex flex-column">
+					<div class="card-body p-2 flex-grow-1 d-flex flex-column overflow-hidden">
+						<div id="my-log" class="flex-grow-1 overflow-auto" style="min-height: 0;">
 						</div>
 					</div>
 				</div>
