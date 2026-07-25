@@ -118,8 +118,9 @@ window.addEventListener('DOMContentLoaded', () => {
 	workerSysEx.addEventListener('message', (e) => {
 		// Makes a whole HTML for SysEx.
 		const htmlDetails = e.data.map(({mes, params}) => {
-			const {mfrName, modelName, commandName, subCommandName, bytes} = mes;
+			const {mfrName, modelName, commandName, subCommandName, address, rawValues, bytes} = mes;
 
+			// Makes HTML fragment for the left side of <summary>.
 			let htmlCommand = '';
 			if (mfrName) {
 				htmlCommand += `<span class="badge bg-secondary">${mfrName}</span> `;
@@ -128,26 +129,32 @@ window.addEventListener('DOMContentLoaded', () => {
 				htmlCommand += `<span class="badge bg-primary">${modelName}</span> `;
 			}
 			if (commandName) {
-				htmlCommand += `<span class="">${commandName}</span>: `;
+				htmlCommand += `<span>${commandName}</span>: `;
 			}
 
+			// Makes HTML fragment for the right side of <summary>.
 			let htmlParamDesc = '';
-			let htmlInner = '';
 			if (params.length === 0) {
-				htmlParamDesc = `<div class="text-truncate"><code>${bytesToHex(bytes)}</code></div>`;
+				// Adds address if available.
+				if (address && rawValues) {
+					htmlParamDesc += `<code>[${bytesToHex(address)}]</code> (Unknown Address): <mark>${bytesToHex(rawValues)}</mark>`;
+				}
 
 			} else {
-				const {address, paramNames, format, unit, values, valueText, valueHtml} = params[0];
+				const {paramNames, format, unit, values, valueText, valueHtml} = params[0];
+
+				// Adds parameter information.
 				if (address) {
 					htmlParamDesc += `<code>[${bytesToHex(address)}]</code> `;
 				}
 				if (subCommandName) {
-					htmlParamDesc += `<span class="">${subCommandName}</span>: `;
+					htmlParamDesc += `<span>${subCommandName}</span>: `;
 				}
 				if (paramNames) {
-					htmlParamDesc += `<span class="">${(paramNames ?? []).join(' <span class="text-muted">&gt;</span> ')}</span>: `;
+					htmlParamDesc += `<span>${(paramNames ?? []).join(' <span class="text-muted">&gt;</span> ')}</span>: `;
 				}
 
+				// Adds formatted values.
 				let htmlParamValue = '';
 				if (valueHtml) {
 					const m = valueHtml.match(/<(\w+)/u);
@@ -169,21 +176,32 @@ window.addEventListener('DOMContentLoaded', () => {
 				if (!htmlParamValue) {
 					htmlParamValue = values.join(', ');
 				}
+
 				console.assert(htmlParamValue);
 				htmlParamDesc += htmlParamValue;
-
-				htmlInner += `<div class="text-truncate"><code>${bytesToHex(bytes)}</code></div>`;
 			}
 
+			let htmlInner = '';
+
+			// Adds raw SysEx bytes in hex.
+			const htmlRawSysEx = `<div class="text-truncate"><code>${bytesToHex(bytes)}</code></div>`;
+			if (htmlParamDesc !== '') {
+				htmlInner += htmlRawSysEx;
+			} else {
+				htmlParamDesc = htmlRawSysEx;
+			}
+
+			// Makes HTML fragment for <details>.
 			if (params.length > 1) {
 				for (const param of params.slice(1)) {
-					let htmlInnerLine = '';
 					const {address, paramNames, format, unit, valueText} = param;
+
+					let htmlInnerLine = '';
 					if (address) {
 						htmlInnerLine += `<code>[${bytesToHex(address)}]</code> `;
 					}
 					if (paramNames) {
-						htmlInnerLine += `<span class="">${(paramNames ?? []).join(' <span class="text-muted">&gt;</span> ')}</span>: `;
+						htmlInnerLine += `<span>${(paramNames ?? []).join(' <span class="text-muted">&gt;</span> ')}</span>: `;
 					}
 					if (valueText) {
 						const text = formatText(format, valueText);
