@@ -34,7 +34,7 @@ window.addEventListener('DOMContentLoaded', () => {
 		const tabId = `my-keyboard-panes-${i}`;
 		const tabHtml = `<li class="nav-item" role="presentation"><button type="button" class="nav-link ${(i === 0) ? 'active' : ''}" role="tab" data-bs-toggle="tab" data-bs-target="#${tabId}">Port ${(0xa + i).toString(36).toUpperCase()}</button></li>`;
 		document.getElementById('my-keyboard-tabs').insertAdjacentHTML('beforeend', tabHtml);
-		const tableHtml = '<table class="table table-sm"><tbody>' + [...new Array(16).fill()].map((_, j) => `<tr class="align-middle"><td style="width: 4rem;">Ch. ${String(j + 1).padStart(2, '0')}</td><td><keyboard-indicator id="my-keyboard-${i}-${j}"></keyboard-indicator></td></tr>`).join('') + '</tbody></table>';
+		const tableHtml = '<table class="table table-sm mb-0"><tbody>' + [...new Array(16).fill()].map((_, j) => `<tr class="align-middle"><td style="width: 4rem;">Ch. ${String(j + 1).padStart(2, '0')}</td><td><keyboard-indicator id="my-keyboard-${i}-${j}"></keyboard-indicator></td></tr>`).join('') + '</tbody></table>';
 		document.getElementById('my-keyboard-panes').insertAdjacentHTML('beforeend', `<div id="${tabId}" class="tab-pane fade ${(i === 0) ? 'show active' : ''}" role="tabpanel">${tableHtml}</div>`);
 	}
 	const elemKeyboards = [...document.querySelectorAll('keyboard-indicator[id^=my-keyboard-]')];
@@ -190,21 +190,21 @@ window.addEventListener('DOMContentLoaded', () => {
 						htmlInnerLine += `<mark>${text}${(unit) ? ` [${unit}]` : ''}</mark>`;
 					}
 
-					htmlInner += `<div class="ms-3">${htmlInnerLine}</div>`;
+					htmlInner += `<div>${htmlInnerLine}</div>`;
 				}
 			}
 
 			return `
-				<details style="content-visibility: auto; contain-intrinsic-size: 200px;">
+				<details>
 					<summary class="d-flex flex-row">
-						<div class="my-log-commands flex-grow-0 text-nowrap me-2" style="width: 20rem;">
+						<div class="my-log-commands flex-grow-0 text-nowrap" style="width: 20rem;">
 							${htmlCommand}
 						</div>
-						<div class="my-log-parameters flex-grow-1 flex-shrink-0 text-nowrap me-1">
+						<div class="my-log-parameters flex-grow-1 flex-shrink-0 text-nowrap">
 							${htmlParamDesc}
 						</div>
 					</summary>
-					<div class="my-log-details pb-1">
+					<div class="my-log-details" style="padding-left: 20rem;">
 						${htmlInner}
 					</div>
 				</details>`;
@@ -571,8 +571,8 @@ window.addEventListener('DOMContentLoaded', () => {
 	</nav>
 
 	<!-- Main screen -->
-	<main class="container vh-100 d-flex flex-column" style="padding-top: 4rem;">
-		<div class="row">
+	<main class="container vh-100 pt-5 pb-2 d-flex flex-column">
+		<div class="row mt-3">
 			<div class="col-lg-12 col-xl-6 mt-xl-5">
 				<sound-canvas-lcd-ex id="my-lcd"></sound-canvas-lcd-ex>
 				<div class="progress mt-2">
@@ -634,17 +634,17 @@ window.addEventListener('DOMContentLoaded', () => {
 					</div>
 				</div>
 			</div>
-			<div class="col-lg-12 col-xl-6 mt-lg-2 mt-2 mt-xl-0">
+			<div class="col-lg-12 col-xl-6 mt-2 mt-xl-0">
 				<ul id="my-keyboard-tabs" class="nav nav-tabs" role="tablist">
 				</ul>
 				<div id="my-keyboard-panes" class="tab-content">
 				</div>
 			</div>
 		</div>
-		<div class="row h-100 pb-2" style="min-height: 12rem;">
+		<div class="row h-100 mt-2" style="min-height: 12rem;">
 			<div class="col-12 h-100">
-				<div class="card h-100 d-flex flex-column">
-					<div class="card-body p-2 flex-grow-1 d-flex flex-column overflow-hidden">
+				<div class="card h-100">
+					<div class="card-body p-2 d-flex flex-column overflow-hidden">
 						<div id="my-log" class="flex-grow-1 overflow-auto" style="min-height: 0;">
 						</div>
 					</div>
