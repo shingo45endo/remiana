@@ -123,10 +123,10 @@ window.addEventListener('DOMContentLoaded', () => {
 			// Makes HTML fragment for the left side of <summary>.
 			let htmlCommand = '';
 			if (mfrName) {
-				htmlCommand += `<span class="badge bg-secondary">${mfrName}</span> `;
+				htmlCommand += `<span class="badge text-secondary-emphasis bg-secondary-subtle">${mfrName}</span> `;
 			}
 			if (modelName) {
-				htmlCommand += `<span class="badge bg-primary">${modelName}</span> `;
+				htmlCommand += `<span class="badge text-primary-emphasis bg-primary-subtle">${modelName}</span> `;
 			}
 			if (commandName) {
 				htmlCommand += `<span>${commandName}</span>: `;
@@ -137,7 +137,7 @@ window.addEventListener('DOMContentLoaded', () => {
 			if (params.length === 0) {
 				// Adds address if available.
 				if (address && rawValues) {
-					htmlParamDesc += `<code>[${bytesToHex(address)}]</code> (Unknown Address): <mark>${bytesToHex(rawValues)}</mark>`;
+					htmlParamDesc += `<span class="text-muted">[</span><code>${bytesToHex(address)}</code><span class="text-muted">]</span> (Unknown Address): <mark class="py-0">${bytesToHex(rawValues)}</mark>`;
 				}
 
 			} else {
@@ -145,13 +145,13 @@ window.addEventListener('DOMContentLoaded', () => {
 
 				// Adds parameter information.
 				if (address) {
-					htmlParamDesc += `<code>[${bytesToHex(address)}]</code> `;
+					htmlParamDesc += `<span class="text-muted">[</span><code>${bytesToHex(address)}</code><span class="text-muted">]</span> `;
 				}
 				if (subCommandName) {
-					htmlParamDesc += `<span>${subCommandName}</span>: `;
+					htmlParamDesc += `${subCommandName}: `;
 				}
 				if (paramNames) {
-					htmlParamDesc += `<span>${(paramNames ?? []).join(' <span class="text-muted">&gt;</span> ')}</span>: `;
+					htmlParamDesc += `${(paramNames ?? []).join(' <span class="text-muted">&gt;</span> ')}: `;
 				}
 
 				// Adds formatted values.
@@ -170,11 +170,10 @@ window.addEventListener('DOMContentLoaded', () => {
 					}
 				}
 				if (!htmlParamValue && valueText) {
-					const text = `${formatText(format, valueText)}${(unit) ? ` [${unit}]` : ''}`;
-					htmlParamValue = `<mark>${text}</mark>`;
+					htmlParamValue = `<mark class="py-0">${formatText(format, valueText)}${(unit) ? ` <span class="text-muted">[${unit}]</span>` : ''}</mark>`;
 				}
 				if (!htmlParamValue) {
-					htmlParamValue = values.join(', ');
+					htmlParamValue = `<mark class="py-0">${values.join(', ')}</mark>`;
 				}
 
 				console.assert(htmlParamValue);
@@ -198,14 +197,13 @@ window.addEventListener('DOMContentLoaded', () => {
 
 					let htmlInnerLine = '';
 					if (address) {
-						htmlInnerLine += `<code>[${bytesToHex(address)}]</code> `;
+						htmlInnerLine += `<span class="text-muted">[</span><code>${bytesToHex(address)}</code><span class="text-muted">]</span> `;
 					}
 					if (paramNames) {
-						htmlInnerLine += `<span>${(paramNames ?? []).join(' <span class="text-muted">&gt;</span> ')}</span>: `;
+						htmlInnerLine += `${(paramNames ?? []).join(' <span class="text-muted">&gt;</span> ')}: `;
 					}
 					if (valueText) {
-						const text = formatText(format, valueText);
-						htmlInnerLine += `<mark>${text}${(unit) ? ` [${unit}]` : ''}</mark>`;
+						htmlInnerLine += `<mark class="py-0">${formatText(format, valueText)}${(unit) ? ` <span class="text-muted">[${unit}]</span>` : ''}</mark>`;
 					}
 
 					htmlInner += `<div>${htmlInnerLine}</div>`;
@@ -238,7 +236,7 @@ window.addEventListener('DOMContentLoaded', () => {
 			} else if (valueText?.includes('\n')) {
 				return `\n${valueText}`.replaceAll('\n', '\n\t');
 			} else if (format?.startsWith('ascii')) {
-				return `"<code>${valueText}</code>"`;
+				return `<span class="text-muted">"</span><code>${valueText}</code><span class="text-muted">"</span>`;
 			} else {
 				return valueText;
 			}
@@ -372,7 +370,7 @@ window.addEventListener('DOMContentLoaded', () => {
 					if (elemMidiLed) {
 						elemMidiLed.style.animation = '';
 						void elemMidiLed.offsetLeft;	// Force layout
-						elemMidiLed.style.animation = `midi-in-led 0.2s forwards`;
+						elemMidiLed.style.animation = 'midi-in-led 0.2s forwards';
 					}
 				}
 
