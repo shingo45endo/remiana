@@ -118,7 +118,7 @@ window.addEventListener('DOMContentLoaded', () => {
 	workerSysEx.addEventListener('message', (e) => {
 		// Makes a whole HTML for SysEx.
 		const htmlDetails = e.data.map(({mes, params}) => {
-			const {mfrName, modelName, commandName, subCommandName, address, rawValues, bytes} = mes;
+			const {mfrName, modelName, commandName, subCommandName, address, rawValues, checkSum, expectedCheckSum, isCheckSumError, bytes} = mes;
 
 			// Makes HTML fragment for the left side of <summary>.
 			let htmlCommand = '';
@@ -190,6 +190,12 @@ window.addEventListener('DOMContentLoaded', () => {
 				htmlParamDesc = htmlRawSysEx;
 			}
 
+			// Adds check sum error.
+			if (isCheckSumError) {
+				htmlParamDesc += `<span class="badge rounded-pill text-danger-emphasis bg-danger-subtle me-2 position-absolute top-0 end-0" title="Check Sum Error!">!</span>`;
+				htmlInner += `<div>Check Sum Error: <code>${bytesToHex([checkSum])}</code> (expected: <code>${bytesToHex([expectedCheckSum])}</code>)</div>`;
+			}
+
 			// Makes HTML fragment for <details>.
 			if (params.length > 1) {
 				for (const param of params.slice(1)) {
@@ -216,7 +222,7 @@ window.addEventListener('DOMContentLoaded', () => {
 						<div class="my-log-commands flex-grow-0 text-nowrap" style="width: 20rem;">
 							${htmlCommand}
 						</div>
-						<div class="my-log-parameters flex-grow-1 flex-shrink-0 text-nowrap">
+						<div class="my-log-parameters flex-grow-1 flex-shrink-0 text-nowrap position-relative">
 							${htmlParamDesc}
 						</div>
 					</summary>
@@ -661,7 +667,7 @@ window.addEventListener('DOMContentLoaded', () => {
 			<div class="col-12 h-100">
 				<div class="card h-100">
 					<div class="card-body p-2 d-flex flex-column overflow-hidden">
-						<div id="my-log" class="flex-grow-1 overflow-auto" style="min-height: 0;">
+						<div id="my-log" class="flex-grow-1 overflow-x-auto overflow-y-scroll" style="min-height: 0;">
 						</div>
 					</div>
 				</div>
