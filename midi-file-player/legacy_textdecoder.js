@@ -1,3 +1,5 @@
+import {decodeNec932} from '../rcm2smf/nec932_decoder.js';
+
 const decoderUtf8    = new TextDecoder('UTF-8');
 const decoderCp932   = new TextDecoder('Shift_JIS');
 const decoderLatin1  = new TextDecoder('Latin1');
@@ -57,38 +59,4 @@ export function decodeLegacyText(bytes) {
 	})[0];
 
 	return result.text;
-}
-
-function decodeNec932(bytes) {
-	// Note: This function doesn't support "2-byte half-width" characters assigned to 0x8540-0x869e.
-
-	// Checks whether the bytes seem to contain NEC box-drawing characters.
-	if ([...bytes].some((e, i, a) => isPc98BoxDrawing((i > 0) && (a[i - 1] << 8) | e))) {	// It allows false positive.
-		// Separates from the bytes to each character code according to Shift_JIS encoding.
-		let leadingByte = -1;
-		const charArrays = [...bytes].reduce((p, c) => {
-			if (leadingByte >= 0) {
-				p.push([leadingByte, c]);
-				leadingByte = -1;
-			} else if ((0x81 <= c && c <= 0x9f) || (0xe0 <= c && c <= 0xfc)) {
-				leadingByte = c;
-			} else {
-				p.push([c]);
-			}
-			return p;
-		}, []);
-
-		// Replaces NEC box-drawing characters into Unicode's ones.
-		return charArrays.map((e) => {
-			const cp932code =  (e[0] << 8) | e[1];
-			return (isPc98BoxDrawing(cp932code) ? String.fromCodePoint(cp932code - 0x61a2) : decoderCp932.decode(new Uint8Array(e)));
-		}).join('');
-
-	} else {
-		return decoderCp932.decode(bytes);
-	}
-
-	function isPc98BoxDrawing(cp932code) {
-		return (0x86a2 <= cp932code && cp932code <= 0x86ed);
-	}
 }
