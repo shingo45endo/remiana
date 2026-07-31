@@ -137,7 +137,7 @@ window.addEventListener('DOMContentLoaded', () => {
 			if (params.length === 0) {
 				// Adds address if available.
 				if (address && rawValues) {
-					htmlParamDesc += `<span class="text-muted">[</span><code>${bytesToHex(address)}</code><span class="text-muted">]</span> (Unknown Address): <mark class="py-0">${bytesToHex(rawValues)}</mark>`;
+					htmlParamDesc += `${renderAddress(address)} (Unknown Address): <mark class="py-0"><code>${bytesToHex(rawValues)}</code></mark>`;
 				}
 
 			} else {
@@ -145,13 +145,13 @@ window.addEventListener('DOMContentLoaded', () => {
 
 				// Adds parameter information.
 				if (address) {
-					htmlParamDesc += `<span class="text-muted">[</span><code>${bytesToHex(address)}</code><span class="text-muted">]</span> `;
+					htmlParamDesc += `${renderAddress(address)} `;
 				}
 				if (subCommandName) {
 					htmlParamDesc += `${subCommandName}: `;
 				}
 				if (paramNames) {
-					htmlParamDesc += `${(paramNames ?? []).join(' <span class="text-muted">&gt;</span> ')}: `;
+					htmlParamDesc += `${renderParamNames(paramNames)}: `;
 				}
 
 				// Adds formatted values.
@@ -170,7 +170,7 @@ window.addEventListener('DOMContentLoaded', () => {
 					}
 				}
 				if (!htmlParamValue && valueText) {
-					htmlParamValue = `<mark class="py-0">${formatText(format, valueText)}${(unit) ? ` <span class="text-muted">[${unit}]</span>` : ''}</mark>`;
+					htmlParamValue = renderValueText(valueText, format, unit);
 				}
 				if (!htmlParamValue) {
 					htmlParamValue = `<mark class="py-0">${values.join(', ')}</mark>`;
@@ -203,13 +203,13 @@ window.addEventListener('DOMContentLoaded', () => {
 
 					let htmlInnerLine = '';
 					if (address) {
-						htmlInnerLine += `<span class="text-muted">[</span><code>${bytesToHex(address)}</code><span class="text-muted">]</span> `;
+						htmlInnerLine += `${renderAddress(address)} `;
 					}
 					if (paramNames) {
-						htmlInnerLine += `${(paramNames ?? []).join(' <span class="text-muted">&gt;</span> ')}: `;
+						htmlInnerLine += `${renderParamNames(paramNames)}: `;
 					}
 					if (valueText) {
-						htmlInnerLine += `<mark class="py-0">${formatText(format, valueText)}${(unit) ? ` <span class="text-muted">[${unit}]</span>` : ''}</mark>`;
+						htmlInnerLine += renderValueText(valueText, format, unit);
 					}
 
 					htmlInner += `<div>${htmlInnerLine}</div>`;
@@ -236,16 +236,21 @@ window.addEventListener('DOMContentLoaded', () => {
 		// Scrolls to the bottom of the log area.
 		elemLog.scrollTop = elemLog.scrollHeight;
 
-		function formatText(format, valueText) {
-			if (Number.isFinite(valueText)) {
-				return String(valueText);
-			} else if (valueText?.includes('\n')) {
-				return `\n${valueText}`.replaceAll('\n', '\n\t');
-			} else if (format?.startsWith('ascii')) {
-				return `<span class="text-muted">"</span><code>${valueText}</code><span class="text-muted">"</span>`;
-			} else {
-				return valueText;
+		function renderAddress(address) {
+			return `<span class="text-muted">[</span><code>${bytesToHex(address)}</code><span class="text-muted">]</span>`;
+		}
+		function renderParamNames(paramNames) {
+			return `${(paramNames ?? []).join(' <span class="text-muted">&gt;</span> ')}`;
+		}
+		function renderValueText(valueText, format, unit) {
+			let htmlValueText = valueText;
+			if (format?.startsWith('ascii')) {
+				htmlValueText = `<span class="text-muted">"</span><code>${htmlValueText}</code><span class="text-muted">"</span>`;
 			}
+			if (unit) {
+				htmlValueText += ` <span class="text-muted">[${unit}]</span>`;
+			}
+			return `<mark class="py-0">${htmlValueText}</mark>`;
 		}
 	});
 
@@ -534,6 +539,10 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 <style>
+code {
+	white-space: pre-wrap;
+}
+
 #my-log table th,
 #my-log table td {
 	width: 3rem;
