@@ -118,7 +118,7 @@ window.addEventListener('DOMContentLoaded', () => {
 	workerSysEx.addEventListener('message', (e) => {
 		// Makes a whole HTML for SysEx.
 		const htmlDetails = e.data.map(({mes, params}) => {
-			const {mfrName, modelName, commandName, subCommandName, address, rawValues, checkSum, expectedCheckSum, isCheckSumError, bytes} = mes;
+			const {mfrName, modelName, commandName, subCommandName, address, requiredSize, rawValues, checkSum, expectedCheckSum, isCheckSumError, bytes} = mes;
 
 			// Makes HTML fragment for the left side of <summary>.
 			let htmlCommand = '';
@@ -156,24 +156,29 @@ window.addEventListener('DOMContentLoaded', () => {
 
 				// Adds formatted values.
 				let htmlParamValue = '';
-				if (valueHtml) {
-					const m = valueHtml.match(/<(\w+)/u);
-					const tagName = m?.[1];
-					switch (tagName.toLowerCase()) {
-					case 'svg':
-						htmlParamValue = `<img loading="lazy" style="height: 1lh;" src="data:image/svg+xml;base64,${btoa(valueHtml)}">`;
-						break;
-					case 'table':
-						htmlParamValue = valueHtml;
-						break;
-					// no default
+				if (requiredSize) {
+					htmlParamValue = renderValueText(String(requiredSize), null, 'byte');
+
+				} else {
+					if (valueHtml) {
+						const m = valueHtml.match(/<(\w+)/u);
+						const tagName = m?.[1];
+						switch (tagName.toLowerCase()) {
+						case 'svg':
+							htmlParamValue = `<img loading="lazy" style="height: 1lh;" src="data:image/svg+xml;base64,${btoa(valueHtml)}">`;
+							break;
+						case 'table':
+							htmlParamValue = valueHtml;
+							break;
+						// no default
+						}
 					}
-				}
-				if (!htmlParamValue && valueText) {
-					htmlParamValue = renderValueText(valueText, format, unit);
-				}
-				if (!htmlParamValue) {
-					htmlParamValue = `<mark class="py-0">${values.join(', ')}</mark>`;
+					if (!htmlParamValue && valueText) {
+						htmlParamValue = renderValueText(valueText, format, unit);
+					}
+					if (!htmlParamValue) {
+						htmlParamValue = `<mark class="py-0">${values.join(', ')}</mark>`;
+					}
 				}
 
 				console.assert(htmlParamValue);
