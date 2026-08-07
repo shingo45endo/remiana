@@ -134,10 +134,10 @@ window.addEventListener('DOMContentLoaded', () => {
 
 			// Makes HTML fragment for the right side of <summary>.
 			let htmlParamDesc = '';
-			if (params.length === 0) {
+			if (!params?.length) {
 				// Adds address if available.
 				if (address && rawValues) {
-					htmlParamDesc += `${renderAddress(address)} (Unknown Address): <mark class="py-0"><code>${bytesToHex(rawValues)}</code></mark>`;
+					htmlParamDesc += `${renderAddress(address)} ${(params) ? '(Unknown Address)' : 'Data'}: <mark class="py-0"><code>${bytesToHex(rawValues)}</code></mark>`;
 				}
 
 			} else {
@@ -202,7 +202,7 @@ window.addEventListener('DOMContentLoaded', () => {
 			}
 
 			// Makes HTML fragment for <details>.
-			if (params.length > 1) {
+			if (params?.length > 1) {
 				for (const param of params.slice(1)) {
 					const {address, paramNames, format, unit, valueText} = param;
 

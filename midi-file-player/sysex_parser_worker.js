@@ -8,7 +8,7 @@ self.addEventListener('message', (e) => {
 
 	for (const bytes of e.data) {
 		const mes = analyzeMidiMessage(bytes);
-		const params = analyzeSysExParams(mes) ?? [];
+		const params = analyzeSysExParams(mes);
 		queueItems.push({mes, params});
 	}
 });
