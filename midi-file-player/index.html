@@ -319,7 +319,7 @@ window.addEventListener('DOMContentLoaded', () => {
 		}
 	}
 
-	function handleNotifyEvent(state) {
+	function handleNotifyEvent(state, prevState) {
 		const tables = {
 			play:  {play: false, pause: true,  stop: true},
 			pause: {play: true,  pause: false, stop: true},
@@ -330,6 +330,11 @@ window.addEventListener('DOMContentLoaded', () => {
 		// Updates the states of UI buttons.
 		for (const key of ['play', 'pause', 'stop']) {
 			document.getElementById(`my-${key}`).disabled = !tables[key];
+		}
+
+		// Clears logs if playing back from the beginning.
+		if (state === 'play' && prevState === 'stop') {
+			elemLog.innerHTML = '';
 		}
 
 		// Stops sound if necessary.
