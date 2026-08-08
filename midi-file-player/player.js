@@ -134,9 +134,10 @@ export class MidiPlayer {
 			return;
 		}
 
+		const prevState = this._state;
 		this._state = state;
 		if (this._notifyHandler) {
-			this._notifyHandler(this._state);
+			this._notifyHandler(this._state, prevState);
 		}
 	}
 
