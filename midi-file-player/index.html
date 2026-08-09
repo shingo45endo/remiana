@@ -19,15 +19,17 @@ const workerFile = new Worker(import.meta.url.replace(/\/[^/]*$/u, '/file_parser
 const workerSysEx = new Worker(import.meta.url.replace(/\/[^/]*$/u, '/sysex_parser_worker.js'), {type: 'module'});
 
 window.addEventListener('DOMContentLoaded', () => {
-	const elemLcd      = document.getElementById('my-lcd');
-	const elemProgress = document.getElementById('my-progress');
-	const elemTime     = document.getElementById('my-time');
-	const elemPosition = document.getElementById('my-position');
-	const elemTempo    = document.getElementById('my-tempo');
-	const elemTimeSig  = document.getElementById('my-timesig');
-	const elemLog      = document.getElementById('my-log');
-	const elemMidiOuts = [...document.querySelectorAll('[id^=my-midiout-]')];
-	const elemMidiLeds = [...document.querySelectorAll('[id^=my-midiled-]')];
+	const elemLcd       = document.getElementById('my-lcd');
+	const elemProgress  = document.getElementById('my-progress');
+	const elemTime      = document.getElementById('my-time');
+	const elemTotalTime = document.getElementById('my-total-time');
+	const elemPosition  = document.getElementById('my-position');
+	const elemTempo     = document.getElementById('my-tempo');
+	const elemTimeSig   = document.getElementById('my-timesig');
+	const elemTitle     = document.getElementById('my-title');
+	const elemLog       = document.getElementById('my-log');
+	const elemMidiOuts  = [...document.querySelectorAll('[id^=my-midiout-]')];
+	const elemMidiLeds  = [...document.querySelectorAll('[id^=my-midiled-]')];
 
 	// Adds keyboard elements.
 	for (let i = 0; i < elemMidiOuts.length; i++) {
@@ -38,6 +40,17 @@ window.addEventListener('DOMContentLoaded', () => {
 		document.getElementById('my-keyboard-panes').insertAdjacentHTML('beforeend', `<div id="${tabId}" class="tab-pane fade ${(i === 0) ? 'show active' : ''}" role="tabpanel">${tableHtml}</div>`);
 	}
 	const elemKeyboards = [...document.querySelectorAll('keyboard-indicator[id^=my-keyboard-]')];
+
+	// Initializes indicators.
+	function initIndicators() {
+		[elemTime, elemTotalTime, elemPosition, elemTempo, elemTimeSig, elemTitle].forEach((e) => {
+			e.textContent = '-';
+		});
+
+		elemProgress.style.width = '0%';
+		elemLog.innerHTML = '';
+	}
+	initIndicators();
 
 	// Kicks Serial MIDI via user gesture.
 	const elemSerialMidi = document.getElementById('my-serial-midi');
@@ -487,8 +500,10 @@ window.addEventListener('DOMContentLoaded', () => {
 		}
 
 		player.stop();
+
+		// Initializes indicators and set the file name as title temporally.
+		initIndicators();
 		document.getElementById('my-title').textContent = e.dataTransfer.files[0].name;
-		elemLog.innerHTML = '';
 
 		// Sends the MIDI to the worker to reads and parses it.
 		workerFile.postMessage([...e.dataTransfer.files]);
@@ -632,10 +647,10 @@ code {
 							</thead>
 							<tbody>
 								<tr>
-									<td class="text-center"><span id="my-time">-</span>/<span id="my-total-time">-</span></td>
-									<td id="my-position" class="text-center">-</td>
-									<td id="my-tempo" class="text-center">-</td>
-									<td id="my-timesig" class="text-center">-</td>
+									<td class="text-center"><span id="my-time"></span>/<span id="my-total-time"></span></td>
+									<td id="my-position" class="text-center"></td>
+									<td id="my-tempo" class="text-center"></td>
+									<td id="my-timesig" class="text-center"></td>
 								</tr>
 							</tbody>
 						</table>
