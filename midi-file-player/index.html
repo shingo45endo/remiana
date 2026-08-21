@@ -18,6 +18,14 @@ import {requestMIDIAccess, prepareForSerialMidi} from '../web-serial-midi/web_se
 const workerFile = new Worker(import.meta.url.replace(/\/[^/]*$/u, '/file_parser_worker.js'), {type: 'module'});
 const workerSysEx = new Worker(import.meta.url.replace(/\/[^/]*$/u, '/sysex_parser_worker.js'), {type: 'module'});
 
+const escapeHTML = (() => {
+	const elem = document.createElement('span');
+	return (str) => {
+		elem.textContent = str;
+		return elem.innerHTML;
+	};
+})();
+
 window.addEventListener('DOMContentLoaded', () => {
 	const elemLcd       = document.getElementById('my-lcd');
 	const elemProgress  = document.getElementById('my-progress');
@@ -261,7 +269,7 @@ window.addEventListener('DOMContentLoaded', () => {
 			return `${(paramNames ?? []).join(' <span class="text-muted">&gt;</span> ')}`;
 		}
 		function renderValueText(valueText, format, unit) {
-			let htmlValueText = valueText;
+			let htmlValueText = escapeHTML(valueText);
 			if (format?.startsWith('ascii')) {
 				htmlValueText = `<span class="text-muted">"</span><code>${htmlValueText}</code><span class="text-muted">"</span>`;
 			}
