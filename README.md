@@ -11,7 +11,7 @@ PoC
 
 This is a PoC as a feasibility study of a MIDI player application using the Web MIDI API and the below components.
 
-* [midi-file-player](https://shingo45endo.github.io/remiana/midi-file-player/): Simple MIDI File Player
+* [midi-file-player](https://shingo45endo.github.io/remiana/midi-file-player/): PoC MIDI File Player
 
 
 Sub components
