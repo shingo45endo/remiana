@@ -139,7 +139,7 @@ window.addEventListener('DOMContentLoaded', () => {
 	workerSysEx.addEventListener('message', (e) => {
 		// Makes a whole HTML for SysEx.
 		const htmlDetails = e.data.map(({mes, params}) => {
-			const {mfrName, modelName, commandName, subCommandName, address, requiredSize, rawValues, checkSum, expectedCheckSum, isCheckSumError, bytes} = mes;
+			const {bytes, mfrName, modelName, commandName, subCommandName, address, requiredSize, rawValues, checkSum, expectedCheckSum, isCheckSumError, _paramKeys: paramKeys, _valueKeys: valueKeys} = mes;
 
 			// Makes HTML fragment for the left side of <summary>.
 			let htmlCommand = '';
@@ -154,20 +154,29 @@ window.addEventListener('DOMContentLoaded', () => {
 			}
 
 			// Makes HTML fragment for the right side of <summary>.
-			let htmlParamDesc = '';
+			const htmlParams = (!paramKeys) ? '' : `<span class="text-muted">[${(paramKeys).map((key) => {
+				const values = mes[key];
+				switch (key) {
+				case 'address':
+					return `<small>Addr</small>: <code>${bytesToHex(values)}</code>`;
+				case 'params':
+				case 'rawParams':
+					return `<small>Param</small>: ${values.map((e) => `<code>${bytesToHex([e])}</code>`).join(', ')}`;
+				default:
+					return `<small>${key}</small>: ${values.map((e) => `<code>${bytesToHex([e])}</code>`).join(', ')}`;
+				}
+			}).join(' / ')}]</span> `;
+
+			let htmlParamDesc = htmlParams;
 			if (!params?.length) {
-				// Adds address if available.
-				if (address && rawValues) {
-					htmlParamDesc += `${renderAddress(address)} ${(params) ? '(Unknown Address)' : 'Data'}: <mark class="py-0"><code>${bytesToHex(rawValues)}</code></mark>`;
+				if (valueKeys) {
+					htmlParamDesc += `<span class="text-muted">${(params) ? '(Unknown)' : 'Data'}</span>: <mark class="py-0"><code>${bytesToHex(valueKeys.map((key) => mes[key]).flat())}</code></mark>`;
 				}
 
 			} else {
 				const {paramNames, format, unit, values, valueText, valueHtml} = params[0];
 
 				// Adds parameter information.
-				if (address) {
-					htmlParamDesc += `${renderAddress(address)} `;
-				}
 				if (subCommandName) {
 					htmlParamDesc += `${subCommandName}: `;
 				}
@@ -229,7 +238,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
 					let htmlInnerLine = '';
 					if (address) {
-						htmlInnerLine += `${renderAddress(address)} `;
+						htmlInnerLine += `<span class="text-muted">[<small>Addr</small>: <code>${bytesToHex(address)}</code>]</span> `;
 					}
 					if (paramNames) {
 						htmlInnerLine += `${renderParamNames(paramNames)}: `;
@@ -262,9 +271,6 @@ window.addEventListener('DOMContentLoaded', () => {
 		// Scrolls to the bottom of the log area.
 		elemLog.scrollTop = elemLog.scrollHeight;
 
-		function renderAddress(address) {
-			return `<span class="text-muted">[</span><code>${bytesToHex(address)}</code><span class="text-muted">]</span>`;
-		}
 		function renderParamNames(paramNames) {
 			return `${(paramNames ?? []).join(' <span class="text-muted">&gt;</span> ')}`;
 		}
@@ -574,6 +580,10 @@ window.addEventListener('DOMContentLoaded', () => {
 <style>
 code {
 	white-space: pre-wrap;
+}
+
+small {
+	font-size: 0.75rem;
 }
 
 #my-log table th,
