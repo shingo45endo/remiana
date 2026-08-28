@@ -266,10 +266,13 @@ window.addEventListener('DOMContentLoaded', () => {
 					</div>
 				</details>`;
 		});
-		elemLog.insertAdjacentHTML('beforeend', htmlDetails.join(''));
 
-		// Scrolls to the bottom of the log area.
-		elemLog.scrollTop = elemLog.scrollHeight;
+		// Adds a SysEx log and scrolls to the bottom of the log area if totally scrolled.
+		const isBottom = (Math.abs(elemLog.scrollHeight - elemLog.clientHeight - elemLog.scrollTop) < 1.0);
+		elemLog.insertAdjacentHTML('beforeend', htmlDetails.join(''));
+		if (isBottom) {
+			elemLog.scrollTop = elemLog.scrollHeight;
+		}
 
 		function renderParamNames(paramNames) {
 			return `${(paramNames ?? []).join(' <span class="text-muted">&gt;</span> ')}`;
