@@ -17,7 +17,7 @@ self.addEventListener('message', async (e) => {
 
 			// Parses it as a MIDI data.
 			const logs = [];
-			const content = parseMidiFile(bytes, logs);
+			const content = parseMidiFile(bytes, {}, logs);
 			if (logs.length > 0) {
 				console.warn(...logs);
 			}
@@ -28,6 +28,7 @@ self.addEventListener('message', async (e) => {
 
 		} catch (e) {
 			// Ignores and moves on the next file.
+			console.warn(e);
 		}
 	}
 
@@ -39,7 +40,7 @@ self.addEventListener('message', async (e) => {
 
 			// Parses the converted MIDI data.
 			const logs = [];
-			const content = parseMidiFile(smfData, logs);
+			const content = parseMidiFile(smfData, {}, logs);
 			if (logs.length > 0) {
 				console.warn(...logs);
 			}
