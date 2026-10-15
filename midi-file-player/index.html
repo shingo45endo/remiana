@@ -39,6 +39,9 @@ window.addEventListener('DOMContentLoaded', () => {
 	const elemMidiOuts  = [...document.querySelectorAll('[id^=my-midiout-]')];
 	const elemMidiLeds  = [...document.querySelectorAll('[id^=my-midiled-]')];
 
+	const bsModal = new bootstrap.Modal(document.getElementById('my-modal'));
+	const elemModalContent = document.getElementById('my-modal-content');
+
 	// Adds keyboard elements.
 	for (let i = 0; i < elemMidiOuts.length; i++) {
 		const tabId = `my-keyboard-panes-${i}`;
@@ -527,6 +530,13 @@ window.addEventListener('DOMContentLoaded', () => {
 	});
 
 	workerFile.addEventListener('message', async (e) => {
+		// If none of the files can be played, shows the modal.
+		if (!e.data) {
+			elemModalContent.textContent = 'No playable MIDI data in the file(s)';
+			bsModal.show();
+			return;
+		}
+
 		// Waits until the MIDI event queue is empty.
 		await waitForQueueEmpty();
 
@@ -729,6 +739,18 @@ small {
 			</div>
 		</div>
 	</main>
+
+	<!-- Information modal -->
+	<div id="my-modal" class="modal" tabindex="-1">
+		<div class="modal-dialog">
+			<div class="modal-content">
+				<div class="modal-body">
+					<div id="my-modal-content" class="container-fluid">
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
 
 	<!-- Alert templates -->
 	<template id="my-alert-midi-not-granted">

@@ -23,8 +23,10 @@ self.addEventListener('message', async (e) => {
 			}
 
 			// If the MIDI data can be parsed successfully, returns it and breaks the handler.
-			self.postMessage(content);
-			return;
+			if (content.song) {
+				self.postMessage(content);
+				return;
+			}
 
 		} catch (e) {
 			// Ignores and moves on the next file.
@@ -46,23 +48,26 @@ self.addEventListener('message', async (e) => {
 			}
 
 			// If the MIDI data can be parsed successfully, returns it and breaks the handler.
-			self.postMessage(content);
-			return;
+			if (content.song) {
+				self.postMessage(content);
+				return;
+			}
 
 		} catch (e) {
 			// Ignores and moves on the next file.
 		}
 	}
 
+	// Notifies that none of the files can be played.
+	self.postMessage(null);
+
 	async function fileReader(fileName, fileNameRaw) {
 		const fileNameUC = fileName.toUpperCase();
 		if (fileBytes[fileNameUC]) {
-			console.log(fileBytes[fileNameUC])
 			return fileBytes[fileNameUC];
 		}
 		if (/^[\x20-\x7E]{9,}\.(?:MTD|CM6|GSD)$/u.test(fileName)) {
 			const m = fileNameUC.match(/^([\x20-\x7E]{8}).*?\.(MTD|CM6|GSD)$/u);
-			console.log(m)
 			if (m) {
 				const truncatedFileNameUC = `${m[1]}.${m[2]}`;
 				if (fileBytes[truncatedFileNameUC]) {
