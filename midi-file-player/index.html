@@ -26,8 +26,13 @@ import '../sound-canvas-lcd/sound_canvas_lcd_ex.js';
 import './keyboard_indicator.js';
 import {requestMIDIAccess, prepareForSerialMidi} from '../web-serial-midi/web_serial_midi.js';
 
-const workerFile = new Worker(import.meta.url.replace(/\/[^/]*$/u, '/file_parser_worker.js'), {type: 'module'});
+const workerFileUrl = import.meta.url.replace(/\/[^/]*$/u, '/file_parser_worker.js');
 const workerSysEx = new Worker(import.meta.url.replace(/\/[^/]*$/u, '/sysex_parser_worker.js'), {type: 'module'});
+
+// The file parser worker is made on demand and killed when it takes too long, because a loop in it cannot be interrupted.
+const fileParseTimeout = 20 * 1000;
+let workerFile = null;
+let fileParseTimerId = null;
 
 const escapeHTML = (() => {
 	const elem = document.createElement('span');
@@ -538,14 +543,50 @@ window.addEventListener('DOMContentLoaded', () => {
 		document.getElementById('my-title').textContent = e.dataTransfer.files[0].name;
 
 		// Sends the MIDI to the worker to reads and parses it.
-		workerFile.postMessage([...e.dataTransfer.files]);
+		startFileParse([...e.dataTransfer.files]);
 	});
 
-	workerFile.addEventListener('message', async (e) => {
+	function startFileParse(files) {
+		// If the worker is still busy with the previous files, kills it. (A dropped result would play over the new one.)
+		if (fileParseTimerId !== null) {
+			stopFileParse();
+		}
+
+		if (!workerFile) {
+			workerFile = new Worker(workerFileUrl, {type: 'module'});
+			workerFile.addEventListener('message', handleFileParsed);
+			workerFile.addEventListener('error', (e) => {
+				stopFileParse();
+				showModal(`Failed to read the file(s): ${e.message}`);
+			});
+		}
+
+		fileParseTimerId = setTimeout(() => {
+			stopFileParse();
+			showModal('Timed out while reading the file(s)');
+		}, fileParseTimeout);
+		workerFile.postMessage(files);
+	}
+
+	function stopFileParse() {
+		clearTimeout(fileParseTimerId);
+		fileParseTimerId = null;
+		workerFile?.terminate();
+		workerFile = null;
+	}
+
+	function showModal(message) {
+		elemModalContent.textContent = message;
+		bsModal.show();
+	}
+
+	async function handleFileParsed(e) {
+		clearTimeout(fileParseTimerId);
+		fileParseTimerId = null;
+
 		// If none of the files can be played, shows the modal.
 		if (!e.data) {
-			elemModalContent.textContent = 'No playable MIDI data in the file(s)';
-			bsModal.show();
+			showModal('No playable MIDI data in the file(s)');
 			return;
 		}
 
@@ -569,7 +610,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
 		// Sets the total time of the song.
 		document.getElementById('my-total-time').textContent = formatUsec(player.getTotalUsec());
-	});
+	}
 
 	document.getElementById('my-play').addEventListener('click', () => {
 		player.play();
