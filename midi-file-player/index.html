@@ -34,6 +34,10 @@ const fileParseTimeout = 20 * 1000;
 let workerFile = null;
 let fileParseTimerId = null;
 
+// The loading message is shown in the modal only when reading takes a while, so that a short read does not flash it.
+const loadingModalDelay = 1000;
+let loadingModalTimerId = null;
+
 const escapeHTML = (() => {
 	const elem = document.createElement('span');
 	return (str) => {
@@ -565,14 +569,28 @@ window.addEventListener('DOMContentLoaded', () => {
 			stopFileParse();
 			showModal('Timed out while reading the file(s)');
 		}, fileParseTimeout);
+		loadingModalTimerId = setTimeout(() => {
+			showLoadingModal();
+		}, loadingModalDelay);
 		workerFile.postMessage(files);
 	}
 
 	function stopFileParse() {
 		clearTimeout(fileParseTimerId);
 		fileParseTimerId = null;
+		clearTimeout(loadingModalTimerId);
+		loadingModalTimerId = null;
 		workerFile?.terminate();
 		workerFile = null;
+	}
+
+	function showLoadingModal() {
+		elemModalContent.innerHTML = `
+			<div class="d-flex align-items-center">
+				<div class="spinner-border spinner-border-sm me-2" aria-hidden="true"></div>
+				<span role="status">Reading the file(s)...</span>
+			</div>`;
+		bsModal.show();
 	}
 
 	function showModal(message) {
@@ -583,12 +601,17 @@ window.addEventListener('DOMContentLoaded', () => {
 	async function handleFileParsed(e) {
 		clearTimeout(fileParseTimerId);
 		fileParseTimerId = null;
+		clearTimeout(loadingModalTimerId);
+		loadingModalTimerId = null;
 
 		// If none of the files can be played, shows the modal.
 		if (!e.data) {
 			showModal('No playable MIDI data in the file(s)');
 			return;
 		}
+
+		// Closes the loading message (or a message left from the previous drop) before playing.
+		bsModal.hide();
 
 		// Waits until the MIDI event queue is empty.
 		await waitForQueueEmpty();
