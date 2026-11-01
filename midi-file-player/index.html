@@ -20,8 +20,10 @@ window.addEventListener('drop', (e) => {
 <script type="module">
 import {bytesToHex} from '../midiana/lib/event-analyzer/utilities.js';
 import {MidiPort} from '../midiana/lib/module-simulator/midi_port.js';
+import {collectTextStrings, detectUtf16String} from '../midiana/lib/text-encoding/text_collector.js';
+import {guessEncoding} from '../midiana/lib/text-encoding/encoding_guesser.js';
+import {decodeTextString} from '../midiana/lib/text-encoding/text_decoder.js';
 import {MidiPlayer} from './player.js';
-import {decodeLegacyText} from './legacy_textdecoder.js';
 import '../sound-canvas-lcd/sound_canvas_lcd_ex.js';
 import './keyboard_indicator.js';
 import {requestMIDIAccess, prepareForSerialMidi} from '../web-serial-midi/web_serial_midi.js';
@@ -622,13 +624,16 @@ window.addEventListener('DOMContentLoaded', () => {
 		player.setSong(currentSong);
 		player.play();
 
-		// Sets the title of the song.
+		// Sets the title of the song. The encoding is guessed from all the texts of the file, not from the title alone.
 		const events = currentSong?.MTrks?.[0]?.events.filter((event) => event.tick === 0) ?? [];
 		const event = events.find((event) => event.bytes[0] === 0xff && event.bytes[1] === 0x03) ?? events.find((event) => event.bytes[0] === 0xff && event.bytes[1] === 0x01);
 		if (event) {
 			const index = event.bytes.findIndex((e, i) => (i >= 2 && (e & 0x80) === 0)) + 1;
 			console.assert(index >= 3);
-			document.getElementById('my-title').textContent = decodeLegacyText(event.bytes.slice(index));
+			const bytes = new Uint8Array(event.bytes.slice(index));
+			const guess = guessEncoding(collectTextStrings(e.data));
+			const encoding = detectUtf16String(bytes) ?? ((guess.isAscii) ? 'windows-1252' : guess.encoding);
+			document.getElementById('my-title').textContent = decodeTextString(bytes, encoding).text;
 		}
 
 		// Sets the total time of the song.
