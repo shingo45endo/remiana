@@ -48,7 +48,12 @@ const escapeHTML = (() => {
 	};
 })();
 
+// The names of the text meta events (FF 01-09) for the labels
+const textMetaNames = {0x01: 'Text', 0x02: 'Copyright', 0x03: 'Track Name', 0x04: 'Instrument Name', 0x05: 'Lyric', 0x06: 'Marker', 0x07: 'Cue Point', 0x08: 'Program Name', 0x09: 'Device Name'};
+
 window.addEventListener('DOMContentLoaded', () => {
+	const elemTextEvent = document.getElementById('my-latest-textevent');
+	const elemEventList = document.getElementById('my-textevent');
 	const elemLcd       = document.getElementById('my-lcd');
 	const elemProgress  = document.getElementById('my-progress');
 	const elemTime      = document.getElementById('my-time');
@@ -63,6 +68,8 @@ window.addEventListener('DOMContentLoaded', () => {
 
 	const bsModal = new bootstrap.Modal(document.getElementById('my-modal'));
 	const elemModalContent = document.getElementById('my-modal-content');
+
+	let textEventIndex = -1;
 
 	// Adds keyboard elements.
 	for (let i = 0; i < elemMidiOuts.length; i++) {
@@ -80,8 +87,10 @@ window.addEventListener('DOMContentLoaded', () => {
 			e.textContent = '-';
 		});
 
+		elemEventList.innerHTML = '';
 		elemProgress.style.width = '0%';
 		elemLog.innerHTML = '';
+		resetTextEvent();
 	}
 	initIndicators();
 
@@ -390,6 +399,7 @@ window.addEventListener('DOMContentLoaded', () => {
 		// Clears logs if playing back from the beginning.
 		if (state === 'play' && prevState === 'stop') {
 			elemLog.innerHTML = '';
+			resetTextEvent();
 		}
 
 		// Stops sound if necessary.
@@ -427,6 +437,12 @@ window.addEventListener('DOMContentLoaded', () => {
 					const {bytes, portNo = 0} = event;
 					elemLcd.inputBytes(bytes, portNo);
 
+					// Shows the latest text meta event. The events come in the order of the list.
+					if (isTextMetaEvent(bytes)) {
+						textEventIndex++;
+						showTextEvent(textEventIndex);
+					}
+
 					// Note: Handles only Note On/Off events. (All Note Off and "Reset" SysExs are not supported.)
 					if (bytes[0] < 0xa0) {
 						const [statusByte, noteNo, velocity] = bytes;
@@ -453,7 +469,7 @@ window.addEventListener('DOMContentLoaded', () => {
 				// Updates the current position.
 				const {mbt} = currentSong.tempoMap.get(lastEvent.tick);
 				if (mbt) {
-					elemPosition.textContent = `${String(mbt.meas).padStart(3, '0')}:${String(mbt.beat).padStart(2, '0')}:${String(mbt.tick).padStart(4, '0')}`;
+					elemPosition.textContent = formatMbt(mbt);
 				} else {
 					const {smpte} = currentSong.tempoMap.get(lastEvent.tick);
 					if (smpte) {
@@ -523,6 +539,52 @@ window.addEventListener('DOMContentLoaded', () => {
 		console.assert(usec >= 0);
 		const dt = new Date(usec / 1000);
 		return `${dt.getMinutes()}:${String(dt.getSeconds()).padStart(2, '0')}:${String(dt.getMilliseconds()).padStart(3, '0')}`;
+	}
+
+	function formatMbt(mbt) {
+		return `${String(mbt.meas).padStart(3, '0')}:${String(mbt.beat).padStart(2, '0')}:${String(mbt.tick).padStart(4, '0')}`;
+	}
+
+	// The data of a meta event: the bytes after the status, the type, and the variable-length size.
+	function metaDataOf(bytes) {
+		console.assert(bytes[0] === 0xff);
+		const index = bytes.findIndex((e, i) => (i >= 2 && (e & 0x80) === 0)) + 1;
+		console.assert(index >= 3);
+		return new Uint8Array(bytes.slice(index));
+	}
+
+	function isTextMetaEvent(bytes) {
+		return (bytes[0] === 0xff && bytes.length >= 3 && Object.hasOwn(textMetaNames, bytes[1]));
+	}
+
+	// Makes the decoder of the texts of a song. The encoding is guessed from all the texts of the file, not from each text alone.
+	// A UTF-16 text is decided by itself.
+	function makeTextDecoder(content) {
+		const guess = guessEncoding(collectTextStrings(content));
+		const label = (guess.isAscii) ? 'windows-1252' : guess.encoding;
+		return (bytes) => decodeTextString(bytes, detectUtf16String(bytes) ?? label).text;
+	}
+
+	// Makes the HTML of a text meta event: the position, the label of the type, and the text (a line break is shown as a symbol).
+	function formatTextEvent({position, typeName, text}) {
+		const htmlText = escapeHTML(text.replace(/\r\n|[\r\n]/gu, '\u21b5'));
+		return `<small class="font-monospace text-secondary">${position}</small> <span class="badge text-secondary-emphasis bg-secondary-subtle">${typeName}</span> <span class="my-textevent-text">${htmlText}</span>`;
+	}
+
+	// Shows the text meta event at the index of the list as the latest one.
+	function showTextEvent(index) {
+		elemEventList.querySelector('.active')?.classList.remove('active');
+		const elemItem = elemEventList.children[index]?.firstElementChild;
+		if (elemItem) {
+			elemItem.classList.add('active');
+			elemTextEvent.innerHTML = elemItem.innerHTML;
+		}
+	}
+
+	function resetTextEvent() {
+		textEventIndex = -1;
+		elemEventList.querySelector('.active')?.classList.remove('active');
+		elemTextEvent.innerHTML = '&nbsp;';	// Keeps the height of the button
 	}
 
 	// Handles D&D related events.
@@ -624,17 +686,21 @@ window.addEventListener('DOMContentLoaded', () => {
 		player.setSong(currentSong);
 		player.play();
 
-		// Sets the title of the song. The encoding is guessed from all the texts of the file, not from the title alone.
+		// Sets the title of the song.
+		const decodeText = makeTextDecoder(e.data);
 		const events = currentSong?.MTrks?.[0]?.events.filter((event) => event.tick === 0) ?? [];
 		const event = events.find((event) => event.bytes[0] === 0xff && event.bytes[1] === 0x03) ?? events.find((event) => event.bytes[0] === 0xff && event.bytes[1] === 0x01);
 		if (event) {
-			const index = event.bytes.findIndex((e, i) => (i >= 2 && (e & 0x80) === 0)) + 1;
-			console.assert(index >= 3);
-			const bytes = new Uint8Array(event.bytes.slice(index));
-			const guess = guessEncoding(collectTextStrings(e.data));
-			const encoding = detectUtf16String(bytes) ?? ((guess.isAscii) ? 'windows-1252' : guess.encoding);
-			document.getElementById('my-title').textContent = decodeTextString(bytes, encoding).text;
+			document.getElementById('my-title').textContent = decodeText(metaDataOf(event.bytes));
 		}
+
+		// Lists the text meta events in the order of the playback (by tick, then by track: the order of the player).
+		const textEvents = currentSong.MTrks.flatMap((mtrk) => mtrk.events.filter((event) => isTextMetaEvent(event.bytes))).sort((a, b) => a.tick - b.tick).map((event) => {
+			const {mbt, usec} = currentSong.tempoMap.get(event.tick);
+			return {position: (mbt) ? formatMbt(mbt) : formatUsec(usec), typeName: textMetaNames[event.bytes[1]], text: decodeText(metaDataOf(event.bytes))};
+		});
+		elemEventList.innerHTML = textEvents.map((textEvent) => `<li><span class="dropdown-item text-nowrap">${formatTextEvent(textEvent)}</span></li>`).join('');
+		resetTextEvent();
 
 		// Sets the total time of the song.
 		document.getElementById('my-total-time').textContent = formatUsec(player.getTotalUsec());
@@ -655,6 +721,10 @@ window.addEventListener('DOMContentLoaded', () => {
 			player.setSpeed(Number(e.target.value));
 			document.getElementById('my-current-playspeed').textContent = `x ${e.target.value}`;
 		});
+	});
+
+	elemTextEvent.addEventListener('shown.bs.dropdown', () => {
+		elemEventList.querySelector('.active')?.scrollIntoView({block: 'center'});
 	});
 
 	elemLcd.addEventListener('dblclick', () => {
@@ -683,6 +753,24 @@ small {
 #my-log table th,
 #my-log table td {
 	width: 3rem;
+}
+
+#my-latest-textevent {
+	--bs-btn-border-color: var(--bs-border-color);
+	--bs-btn-hover-border-color: var(--bs-border-color);
+}
+
+#my-textevent {
+	min-width: 100%;
+	max-height: 50vh;
+	overflow-y: auto;
+	scrollbar-gutter: stable;
+	opacity: 0.875;
+}
+
+.my-textevent-text {
+	font-family: serif;
+	white-space: pre;
 }
 
 .fade {
@@ -741,8 +829,12 @@ small {
 	<!-- Main screen -->
 	<main class="container vh-100 pt-5 pb-2 d-flex flex-column">
 		<div class="row mt-3">
-			<div class="col-lg-12 col-xl-6 mt-xl-5">
-				<sound-canvas-lcd-ex id="my-lcd"></sound-canvas-lcd-ex>
+			<div class="col-lg-12 col-xl-6">
+				<div class="dropdown">
+					<button type="button" id="my-latest-textevent" class="btn btn-light w-100 text-start" data-bs-toggle="dropdown" data-bs-auto-close="outside"></button>
+					<ul id="my-textevent" class="dropdown-menu"></ul>
+				</div>
+				<sound-canvas-lcd-ex id="my-lcd" class="mt-2"></sound-canvas-lcd-ex>
 				<div class="progress mt-2">
 					<div id="my-progress" class="progress-bar bg-secondary" role="progressbar" style="transition: none;"></div>
 				</div>
