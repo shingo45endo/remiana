@@ -699,7 +699,7 @@ window.addEventListener('DOMContentLoaded', () => {
 			const {mbt, usec} = currentSong.tempoMap.get(event.tick);
 			return {position: (mbt) ? formatMbt(mbt) : formatUsec(usec), typeName: textMetaNames[event.bytes[1]], text: decodeText(metaDataOf(event.bytes))};
 		});
-		elemEventList.innerHTML = textEvents.map((textEvent) => `<li><span class="dropdown-item text-nowrap">${formatTextEvent(textEvent)}</span></li>`).join('');
+		elemEventList.innerHTML = textEvents.map((textEvent) => `<li><span class="dropdown-item">${formatTextEvent(textEvent)}</span></li>`).join('');
 		resetTextEvent();
 
 		// Sets the total time of the song.
@@ -750,6 +750,10 @@ small {
 	font-size: 0.75rem;
 }
 
+main {
+	container-type: inline-size;
+}
+
 #my-log table th,
 #my-log table td {
 	width: 3rem;
@@ -758,19 +762,33 @@ small {
 #my-latest-textevent {
 	--bs-btn-border-color: var(--bs-border-color);
 	--bs-btn-hover-border-color: var(--bs-border-color);
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+#my-latest-textevent .my-textevent-text {
+	white-space: pre;
 }
 
 #my-textevent {
+	width: max-content;
 	min-width: 100%;
+	max-width: 100cqw;
 	max-height: 50vh;
 	overflow-y: auto;
 	scrollbar-gutter: stable;
 	opacity: 0.875;
 }
 
+#my-textevent .dropdown-item {
+	white-space: normal;
+}
+
 .my-textevent-text {
 	font-family: serif;
-	white-space: pre;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
 }
 
 .fade {
